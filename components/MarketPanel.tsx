@@ -27,7 +27,7 @@ type WatchlistResponse = {
   updatedAt?: string;
 };
 
-const DEFAULT_SYMBOL = "NASDAQ:NDX";
+const DEFAULT_SYMBOL = "BTC-USD";
 const STORAGE_KEY = "kewldashboard.marketTelemetry.v1";
 const SYMBOL_PATTERN = /^[A-Z0-9][A-Z0-9:.\^_-]{1,31}$/;
 
