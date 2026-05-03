@@ -1,47 +1,30 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { useMemo } from "react";
 
 import { useDashboardLocation } from "@/components/dashboard-location-context";
 
-/** Windy iframe: fewer fixed overlays than RainViewer (logo pill + live/time bar). Embed ToS still apply. */
-function windyRadarEmbedUrl(latitude: number, longitude: number, zoom: number): string {
-  const lat = latitude.toFixed(4);
-  const lon = longitude.toFixed(4);
-  const qs = new URLSearchParams([
-    ["lat", lat],
-    ["lon", lon],
-    ["detailLat", lat],
-    ["detailLon", lon],
-    ["zoom", String(zoom)],
-    ["level", "surface"],
-    ["overlay", "radar"],
-    ["type", "map"],
-    ["location", "coordinates"],
-    ["calendar", "now"],
-    ["pressure", ""],
-    ["marker", ""],
-    ["menu", ""],
-    ["message", ""],
-    ["detail", "false"],
-    ["metricWind", "mph"],
-    ["metricTemp", "°F"],
-  ]);
-  return `https://embed.windy.com/embed2.html?${qs.toString()}`;
-}
+const DashboardLeafletMap = dynamic(
+  () =>
+    import("@/components/maps/DashboardLeafletMap").then((m) => m.DashboardLeafletMap),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="map-frame map-frame-loading" role="status">
+        Loading map…
+      </div>
+    ),
+  },
+);
 
 export function LocalMapPanels() {
   const { location } = useDashboardLocation();
 
-  const radarSrc = useMemo(() => {
-    const zoom = 8;
-    return windyRadarEmbedUrl(location.latitude, location.longitude, zoom);
-  }, [location.latitude, location.longitude]);
-
-  const wazeSrc = useMemo(() => {
-    const { latitude: lat, longitude: lon } = location;
-    return `https://embed.waze.com/iframe?zoom=10&lat=${lat}&lon=${lon}&ct=livemap&pin=1`;
-  }, [location.latitude, location.longitude]);
+  const center = useMemo(
+    (): [number, number] => [location.latitude, location.longitude],
+    [location.latitude, location.longitude],
+  );
 
   const areaLabel = location.label;
 
@@ -51,34 +34,28 @@ export function LocalMapPanels() {
         <div className="panel-heading">
           <span>Weather Radar</span>
           <strong className="map-panel-attribution">
-            <a href="https://www.windy.com" target="_blank" rel="noreferrer noopener">
-              Windy
+            <a href="https://www.rainviewer.com/api.html" target="_blank" rel="noreferrer noopener">
+              RainViewer
+            </a>
+            {" · "}
+            <a href="https://carto.com/attributions" target="_blank" rel="noreferrer noopener">
+              CARTO
             </a>
           </strong>
         </div>
-        <iframe
-          key={`radar-${location.latitude}-${location.longitude}`}
-          title={`Radar near ${areaLabel}`}
-          src={radarSrc}
-          className="map-frame"
-          loading="lazy"
-          allowFullScreen
-        />
+        <div className="map-frame map-frame-leaflet">
+          <DashboardLeafletMap center={center} variant="radar" areaLabel={areaLabel} zoom={6} />
+        </div>
       </article>
 
       <article id="traffic" className="panel map-panel traffic-panel scroll-target">
         <div className="panel-heading">
           <span>Traffic</span>
-          <strong>Waze Live Map</strong>
+          <strong className="map-panel-attribution">Basemap · optional tile layer</strong>
         </div>
-        <iframe
-          key={`traffic-${location.latitude}-${location.longitude}`}
-          title={`Waze traffic near ${areaLabel}`}
-          src={wazeSrc}
-          className="map-frame traffic-frame"
-          loading="lazy"
-          allowFullScreen
-        />
+        <div className="map-frame map-frame-leaflet">
+          <DashboardLeafletMap center={center} variant="traffic" areaLabel={areaLabel} zoom={11} />
+        </div>
       </article>
     </section>
   );

@@ -1,6 +1,6 @@
 {
   "name": "kewldashboard",
-  "version": "1.0.7",
+  "version": "1.0.8",
   "description": "Chad and Nick's Kewl Dashboard",
   "private": true,
   "scripts": {
@@ -14,11 +14,14 @@
   "license": "ISC",
   "dependencies": {
     "dompurify": "^3.4.2",
+    "leaflet": "^1.9.4",
     "next": "^16.2.4",
     "react": "^19.2.5",
-    "react-dom": "^19.2.5"
+    "react-dom": "^19.2.5",
+    "react-leaflet": "^5.0.0"
   },
   "devDependencies": {
+    "@types/leaflet": "^1.9.21",
     "@types/node": "^25.6.0",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",

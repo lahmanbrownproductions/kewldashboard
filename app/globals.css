@@ -1459,6 +1459,12 @@ h1 {
   z-index: 1;
 }
 
+.map-panel .panel-heading + .map-frame,
+.map-panel .panel-heading + .map-frame-leaflet {
+  position: relative;
+  z-index: 1;
+}
+
 .map-frame {
   display: block;
   width: 100%;
@@ -1471,16 +1477,29 @@ h1 {
   filter: saturate(0.88) contrast(1.04);
 }
 
+.map-frame-leaflet {
+  min-height: 12rem;
+  overflow: hidden;
+}
+
+.map-frame-loading {
+  display: grid;
+  place-items: center;
+  min-height: clamp(14rem, 32vw, 24rem);
+  font-family: var(--font-display), sans-serif;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
 .radar-panel {
   border-color: var(--peach);
 }
 
 .traffic-panel {
   border-color: var(--purple);
-}
-
-.traffic-frame {
-  filter: invert(0.9) hue-rotate(180deg) saturate(0.72) contrast(0.98) brightness(0.82);
 }
 
 .news-panel {
