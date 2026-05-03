@@ -3,6 +3,7 @@
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 
 import { playErrorBeep, playSubmitBeep, playWatchlistRemoveBeep } from "@/lib/button-beep";
+import { dispatchSetMarketTelemetrySymbol } from "@/lib/market-telemetry-bridge";
 import { formatQuotePercent, formatQuotePrice } from "@/lib/quote-format";
 
 type Quote = {
@@ -135,6 +136,11 @@ export function WatchlistPanel() {
     setSymbols((currentSymbols) => currentSymbols.filter((currentSymbol) => currentSymbol !== symbol));
   }
 
+  function openInMarketTelemetry(symbol: string) {
+    playSubmitBeep();
+    dispatchSetMarketTelemetrySymbol(symbol);
+  }
+
   return (
     <section
       id="watchlist"
@@ -173,16 +179,28 @@ export function WatchlistPanel() {
                 type="button"
                 className="watchlist-remove-btn"
                 aria-label={`Remove ${symbol}`}
-                onClick={() => removeSymbol(symbol)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  removeSymbol(symbol);
+                }}
               >
                 x
               </button>
-              <div>
-                <strong>{symbol}</strong>
-                <span>{quote?.name ?? "Waiting for quote"}</span>
-              </div>
-              <b>{formatQuotePrice(quote?.price ?? null, quote?.currency ?? "USD")}</b>
-              <em className={directionClass}>{formatQuotePercent(changePercent)}</em>
+              <button
+                type="button"
+                className="watchlist-row-main"
+                aria-label={`Open ${symbol} in Market Telemetry`}
+                onClick={() => openInMarketTelemetry(symbol)}
+              >
+                <div className="watchlist-row-info">
+                  <strong>{symbol}</strong>
+                  <span>{quote?.name ?? "Waiting for quote"}</span>
+                </div>
+                <div className="watchlist-row-metrics">
+                  <b>{formatQuotePrice(quote?.price ?? null, quote?.currency ?? "USD")}</b>
+                  <em className={directionClass}>{formatQuotePercent(changePercent)}</em>
+                </div>
+              </button>
             </article>
           );
         })}

@@ -3,6 +3,10 @@
 import { FormEvent, useEffect, useRef, useState } from "react";
 
 import { playErrorBeep, playSubmitBeep } from "@/lib/button-beep";
+import {
+  SET_MARKET_TELEMETRY_SYMBOL_EVENT,
+  type SetMarketTelemetrySymbolDetail,
+} from "@/lib/market-telemetry-bridge";
 import { formatQuotePercent, formatQuotePrice } from "@/lib/quote-format";
 
 import { MarketChart } from "@/components/MarketChart";
@@ -71,6 +75,30 @@ export function MarketPanel() {
   useEffect(() => {
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(symbol));
   }, [symbol]);
+
+  useEffect(() => {
+    function onSetSymbol(event: Event) {
+      const ce = event as CustomEvent<SetMarketTelemetrySymbolDetail>;
+      const raw = ce.detail?.symbol;
+      if (typeof raw !== "string") {
+        return;
+      }
+      const next = normalizeSymbol(raw);
+      if (!SYMBOL_PATTERN.test(next)) {
+        return;
+      }
+      userSetSymbolRef.current = true;
+      setSymbol(next);
+      setInput(next);
+      setDetailTab("quote");
+      document.getElementById("markets")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+
+    window.addEventListener(SET_MARKET_TELEMETRY_SYMBOL_EVENT, onSetSymbol);
+    return () => {
+      window.removeEventListener(SET_MARKET_TELEMETRY_SYMBOL_EVENT, onSetSymbol);
+    };
+  }, []);
 
   useEffect(() => {
     let cancelled = false;

@@ -11,6 +11,10 @@
   --blue: #8dacd6;
   --red: #d54d12;
   --ink: #090909;
+  /** Shared row/card hover (watchlist, Subspace feed stories) */
+  --lcars-row-hover-vail: linear-gradient(135deg, rgba(141, 172, 214, 0.12), transparent);
+  --lcars-row-hover-outline: 1px solid rgba(141, 172, 214, 0.32);
+  --lcars-row-hover-inset: inset 0 0 0 1px rgba(249, 210, 138, 0.06);
 }
 
 * {
@@ -982,18 +986,29 @@ h1 {
 .watchlist-row {
   position: relative;
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto auto;
-  align-items: center;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: stretch;
   gap: 0.55rem;
   min-height: 3.25rem;
   padding: 0.5rem;
   border-radius: 999px 0.65rem 0.65rem 999px;
   background: var(--panel-strong);
+  transition:
+    background 160ms ease,
+    outline-color 160ms ease,
+    box-shadow 160ms ease;
 }
 
-.watchlist-row button {
+.watchlist-row:hover {
+  background: var(--lcars-row-hover-vail), var(--panel-strong);
+  outline: var(--lcars-row-hover-outline);
+  box-shadow: var(--lcars-row-hover-inset);
+}
+
+.watchlist-row .watchlist-remove-btn {
   display: grid;
   place-items: center;
+  align-self: center;
   width: 1.8rem;
   height: 1.8rem;
   border: 0;
@@ -1006,27 +1021,57 @@ h1 {
   cursor: pointer;
 }
 
-.watchlist-row div {
+.watchlist-row-main {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.55rem;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0 0.55rem 0.55rem 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.watchlist-row-main:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+}
+
+.watchlist-row-info {
   display: grid;
   min-width: 0;
   gap: 0.1rem;
 }
 
-.watchlist-row strong,
-.watchlist-row b,
-.watchlist-row em {
+.watchlist-row-metrics {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 0.55rem;
+}
+
+.watchlist-row-info strong,
+.watchlist-row-metrics b,
+.watchlist-row-metrics em {
   font-family: var(--font-display), sans-serif;
   font-style: normal;
   font-weight: 900;
   text-transform: uppercase;
 }
 
-.watchlist-row strong {
+.watchlist-row-info strong {
   color: var(--gold);
   font-size: 0.95rem;
 }
 
-.watchlist-row span {
+.watchlist-row-info span {
   overflow: hidden;
   color: var(--muted);
   font-size: 0.72rem;
@@ -1035,13 +1080,13 @@ h1 {
   white-space: nowrap;
 }
 
-.watchlist-row b {
+.watchlist-row-metrics b {
   color: var(--text);
   font-size: 0.92rem;
   white-space: nowrap;
 }
 
-.watchlist-row em {
+.watchlist-row-metrics em {
   min-width: 4.5rem;
   padding: 0.35rem 0.55rem;
   border-radius: 999px;
@@ -1902,8 +1947,9 @@ h1 {
   color: inherit;
   transition:
     border-color 180ms ease,
-    transform 180ms ease,
-    background 180ms ease;
+    background 160ms ease,
+    outline-color 160ms ease,
+    box-shadow 160ms ease;
   -webkit-tap-highlight-color: transparent;
 }
 
@@ -1915,8 +1961,9 @@ h1 {
 }
 
 .news-list .news-list-card:hover {
-  background: #180d08;
-  transform: translateY(-2px);
+  background: var(--lcars-row-hover-vail), var(--panel-strong);
+  outline: var(--lcars-row-hover-outline);
+  box-shadow: var(--lcars-row-hover-inset);
 }
 
 .news-list strong {
@@ -1930,6 +1977,15 @@ h1 {
   background:
     linear-gradient(135deg, rgba(201, 126, 95, 0.32), transparent),
     var(--panel-strong);
+}
+
+.news-list .news-list-card:first-child:hover {
+  background:
+    var(--lcars-row-hover-vail),
+    linear-gradient(135deg, rgba(201, 126, 95, 0.32), transparent),
+    var(--panel-strong);
+  outline: var(--lcars-row-hover-outline);
+  box-shadow: var(--lcars-row-hover-inset);
 }
 
 @media (max-width: 1180px) {
@@ -2079,9 +2135,14 @@ h1 {
     border-radius: 1.25rem;
   }
 
-  .watchlist-row b,
-  .watchlist-row em {
-    grid-column: 2;
-    justify-self: start;
+  .watchlist-row-main {
+    grid-template-columns: 1fr;
+    align-items: start;
+    gap: 0.4rem;
+  }
+
+  .watchlist-row-metrics {
+    align-self: start;
+    flex-wrap: wrap;
   }
 }
