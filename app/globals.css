@@ -4,7 +4,7 @@
   --panel-strong: #101010;
   --text: #f9d28a;
   --muted: #9fb9dd;
-  --orange: #c97e5f;
+  --orange: #c97e5f; /* Overview chrome: rails, hero & #systems borders, pills; primary readouts use --gold */
   --peach: #f2a13a;
   --gold: #f5c96b;
   --purple: #b77aa0;
@@ -264,6 +264,15 @@ iframe {
   grid-column: 1 / -1;
   grid-row: 1;
   min-width: 0;
+  border-color: var(--orange);
+}
+
+#overview.hero h1 {
+  color: var(--gold);
+}
+
+#overview.hero .status-bank-stats strong {
+  color: var(--gold);
 }
 
 .dashboard-main {
@@ -328,7 +337,8 @@ iframe {
 }
 
 .masthead-cell-3 {
-  background: var(--peach);
+  background: rgba(242, 161, 58, 1);
+  color: #f2a13a;
 }
 
 .masthead-label {
@@ -340,7 +350,7 @@ iframe {
   min-width: 0;
   padding: 0 0.35rem;
   background: #050505;
-  color: #d8a190;
+  color: var(--gold);
   font-family: var(--font-display), sans-serif;
   font-size: clamp(0.88rem, 1.45vw, 1.35rem);
   font-weight: 900;
@@ -406,8 +416,8 @@ h1 {
 .hero-location-form {
   margin-top: 0.65rem;
   display: flex;
-  flex-wrap: wrap;
-  align-items: flex-end;
+  flex-flow: row wrap;
+  align-items: stretch;
   gap: 0.5rem 0.65rem;
 }
 
@@ -416,15 +426,17 @@ h1 {
   width: 100%;
 }
 
-.status-bank .hero-location-fields {
-  grid-template-columns: minmax(0, 1.25fr) minmax(6.5rem, 0.9fr);
+.hero-location-row {
+  display: flex;
+  flex-flow: row nowrap;
+  align-items: stretch;
+  gap: 0.4rem 0.65rem;
+  flex: 1 1 auto;
+  min-width: 0;
 }
 
-.hero-location-fields {
-  display: grid;
-  grid-template-columns: minmax(0, 1.25fr) minmax(6.5rem, 0.9fr);
-  gap: 0.4rem;
-  flex: 1 1 min(32rem, 100%);
+.hero-location-place {
+  flex: 1 1 0%;
   min-width: 0;
 }
 
@@ -433,8 +445,7 @@ h1 {
   min-width: 0;
 }
 
-.hero-location-field input,
-.hero-location-field select {
+.hero-location-field input {
   width: 100%;
   min-height: 2.05rem;
   padding: 0.4rem 0.65rem;
@@ -451,12 +462,10 @@ h1 {
   color: rgba(249, 210, 138, 0.4);
 }
 
-.hero-location-field select {
-  cursor: pointer;
-}
-
 .hero-location-save {
   flex: 0 0 auto;
+  align-self: stretch;
+  width: auto;
   min-height: 2.05rem;
   padding: 0.4rem 0.85rem;
   border: 0;
@@ -524,6 +533,10 @@ h1 {
 .control-pills .control-pill:focus-visible {
   outline: 2px solid var(--gold);
   outline-offset: 3px;
+}
+
+.control-pills .control-pill--orange:focus-visible {
+  outline-color: var(--orange);
 }
 
 .control-pill--gold {
@@ -605,7 +618,7 @@ h1 {
 }
 
 .top-grid > .panel {
-  border-color: var(--gold);
+  border-color: var(--orange);
 }
 
 .clock-panel,
@@ -619,13 +632,174 @@ h1 {
   align-content: space-between;
 }
 
+.clock-station-eyebrow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.15rem 0;
+}
+
+.clock-timezone-hit {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  letter-spacing: inherit;
+  color: inherit;
+  text-transform: inherit;
+  cursor: pointer;
+  text-decoration: underline;
+  text-decoration-style: dashed;
+  text-underline-offset: 0.2em;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.clock-timezone-hit:hover {
+  color: var(--gold);
+}
+
+.clock-timezone-hit:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 3px;
+  border-radius: 0.12rem;
+}
+
+.timezone-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: flex;
+  align-items: stretch;
+  justify-content: center;
+  padding: min(1.25rem, 3.5vw);
+  background: rgba(8, 4, 2, 0.78);
+  backdrop-filter: blur(5px);
+}
+
+.timezone-modal-panel {
+  display: flex;
+  flex-direction: column;
+  width: min(22rem, 100%);
+  max-height: 100%;
+  border-radius: 1.05rem 0.25rem 1.05rem 0.25rem;
+  border: 2px solid var(--blue);
+  background: var(--panel-strong);
+  box-shadow: 0 28px 70px rgba(0, 0, 0, 0.55);
+  overflow: hidden;
+}
+
+.timezone-modal-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 1rem 1rem 0.45rem;
+  border-bottom: 1px solid rgba(141, 172, 214, 0.22);
+}
+
+.timezone-modal-header h2 {
+  margin: 0;
+  font-family: var(--font-display), sans-serif;
+  font-size: 1rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--gold);
+  line-height: 1.2;
+}
+
+.timezone-modal-close {
+  flex: none;
+  margin: 0;
+  padding: 0.32rem 0.55rem;
+  border-radius: 0.35rem;
+  border: 0;
+  background: var(--orange);
+  color: var(--ink);
+  font-family: var(--font-display), sans-serif;
+  font-size: 0.62rem;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.timezone-modal-help {
+  margin: 0;
+  padding: 0.65rem 1rem 0.45rem;
+  color: rgba(159, 185, 221, 0.88);
+  font-size: 0.72rem;
+  line-height: 1.35;
+  letter-spacing: 0.04em;
+}
+
+.timezone-modal-list {
+  margin: 0;
+  padding: 0 0.65rem 0.85rem;
+  list-style: none;
+  overflow: auto;
+}
+
+.timezone-modal-list li {
+  margin: 0 0 0.35rem;
+}
+
+.timezone-modal-list li:last-child {
+  margin-bottom: 0;
+}
+
+.timezone-modal-option {
+  display: grid;
+  gap: 0.08rem;
+  width: 100%;
+  padding: 0.5rem 0.62rem;
+  border: 0;
+  border-radius: 0.55rem;
+  background: rgba(0, 0, 0, 0.32);
+  color: var(--text);
+  text-align: left;
+  font-family: var(--font-mono), monospace;
+  cursor: pointer;
+  outline: 1px solid rgba(141, 172, 214, 0.15);
+}
+
+.timezone-modal-option small {
+  color: rgba(159, 185, 221, 0.75);
+  font-size: 0.62rem;
+  letter-spacing: 0.06em;
+  text-transform: none;
+}
+
+.timezone-modal-option:hover {
+  background: rgba(201, 126, 95, 0.18);
+  outline-color: rgba(245, 201, 107, 0.35);
+}
+
+.timezone-modal-option.is-active {
+  outline: 2px solid var(--gold);
+  outline-offset: 1px;
+  background: rgba(245, 201, 107, 0.08);
+}
+
+.timezone-modal-close:focus-visible,
+.timezone-modal-option:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+}
+
 .clock-readout {
   margin: 1rem 0 0;
   color: var(--gold);
   font-family: var(--font-display), sans-serif;
   font-size: clamp(2rem, 5vw, 4.8rem);
   line-height: 0.95;
-  text-shadow: 0 0 24px rgba(128, 234, 255, 0.35);
+  text-shadow: 0 0 24px rgba(245, 201, 107, 0.35);
+}
+
+.top-grid .panel-heading strong {
+  color: var(--gold);
 }
 
 .panel-heading {
@@ -928,7 +1102,7 @@ h1 {
 .market-telemetry-form button {
   padding: 0.45rem 0.8rem;
   border-radius: 999px 0.4rem 0.4rem 999px;
-  background: var(--peach);
+  background: var(--orange);
   color: var(--ink);
   cursor: pointer;
 }
@@ -971,13 +1145,13 @@ h1 {
 }
 
 .market-panel-tabs button.is-active {
-  background: var(--blue);
+  background: var(--orange);
   color: var(--ink);
-  outline-color: var(--blue);
+  outline-color: var(--orange);
 }
 
 .market-panel-tabs button:focus-visible {
-  outline: 2px solid var(--gold);
+  outline: 2px solid var(--orange);
   outline-offset: 2px;
 }
 
@@ -1033,7 +1207,7 @@ h1 {
 }
 
 .market-chart-ranges button:focus-visible {
-  outline: 2px solid var(--gold);
+  outline: 2px solid var(--orange);
   outline-offset: 2px;
 }
 
@@ -1044,6 +1218,19 @@ h1 {
   border-radius: 0.65rem;
   background: rgba(0, 0, 0, 0.35);
   outline: 1px solid rgba(141, 172, 214, 0.2);
+}
+
+.market-chart-svg .market-chart-grid-line {
+  stroke: rgba(141, 172, 214, 0.16);
+  stroke-width: 1;
+}
+
+.market-chart-svg .market-chart-y-tick-label {
+  fill: rgba(159, 185, 221, 0.9);
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 8.25px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
 }
 
 .market-chart-caption {
@@ -1057,7 +1244,7 @@ h1 {
 
 .market-chart-status {
   margin: 0;
-  color: rgba(249, 210, 138, 0.72);
+  color: var(--gold);
   font-size: 0.82rem;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -1071,17 +1258,20 @@ h1 {
   text-transform: uppercase;
 }
 
-.market-quote-status,
-.market-quote-error {
+.market-quote-status {
   margin: 0;
-  color: rgba(249, 210, 138, 0.72);
+  color: var(--gold);
   font-size: 0.82rem;
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
 
 .market-quote-error {
+  margin: 0;
   color: var(--red);
+  font-size: 0.82rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
 .market-quote-grid {
@@ -1187,6 +1377,19 @@ h1 {
   margin-bottom: 0;
 }
 
+.map-panel-attribution {
+  margin: 0;
+}
+
+.map-panel-attribution a {
+  color: inherit;
+  text-underline-offset: 0.14em;
+}
+
+.map-panel-attribution a:hover {
+  text-decoration: underline;
+}
+
 .map-panel iframe {
   position: relative;
   z-index: 1;
@@ -1221,10 +1424,6 @@ h1 {
   border-color: var(--blue);
 }
 
-.news-panel-tabs {
-  margin-top: 0.35rem;
-}
-
 .news-rss-controls {
   display: grid;
   gap: 0.55rem;
@@ -1242,6 +1441,22 @@ h1 {
   font-weight: 800;
   letter-spacing: 0.06em;
   color: var(--peach);
+}
+
+.news-rss-hint {
+  margin: 0;
+  color: rgba(159, 185, 221, 0.85);
+  font-size: 0.65rem;
+  line-height: 1.4;
+  letter-spacing: 0.05em;
+}
+
+.news-rss-hint code {
+  padding: 0 0.2em;
+  border-radius: 0.2rem;
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 0.88em;
+  background: rgba(0, 0, 0, 0.35);
 }
 
 .news-rss-loading {
@@ -1559,10 +1774,6 @@ h1 {
     display: grid;
   }
 
-  .hero-location-fields {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  }
-
   .top-grid,
   .mission-grid {
     display: grid;
@@ -1607,34 +1818,19 @@ h1 {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .hero-location-fields {
-    grid-template-columns: 1fr;
-  }
-
-  .status-bank .hero-location-fields {
-    grid-template-columns: 1fr;
-    flex: none;
-    width: 100%;
-    min-width: 0;
-  }
-
   .hero-location-form,
   .status-bank .hero-location-form {
-    flex-direction: column;
-    align-items: stretch;
-    flex-wrap: nowrap;
     gap: 0.5rem;
     min-width: 0;
     width: 100%;
   }
 
   .hero-location-save {
-    width: 100%;
-    max-width: 100%;
-    flex: none;
-    align-self: stretch;
+    flex: 0 0 auto;
+    width: auto;
+    max-width: none;
     box-sizing: border-box;
-    white-space: normal;
+    white-space: nowrap;
     text-align: center;
     padding-left: 0.65rem;
     padding-right: 0.65rem;

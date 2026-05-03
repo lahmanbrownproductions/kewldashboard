@@ -7,6 +7,7 @@ import {
   DEFAULT_CHART_PRESET_ID,
   getChartPreset,
 } from "@/lib/chart-range-presets";
+import { formatAxisPrice } from "@/lib/quote-format";
 
 type Point = { t: number; c: number };
 
@@ -17,11 +18,21 @@ type ChartResponse = {
   interval?: string;
 };
 
-const VIEW_W = 400;
+const VIEW_W = 426;
 const VIEW_H = 168;
-const PAD = 10;
+/** Space for formatted price labels along the vertical axis */
+const LABEL_W = 54;
+/** Left edge of plot (after axis labels); right padding balances the frame */
+const PLOT_LEFT = LABEL_W + 6;
+const PAD_R = 10;
+/** Plot vertical bounds (room for top/bottom tick labels) */
+const PLOT_TOP = 12;
+const PLOT_BOTTOM = 150;
+const AXIS_Y = 156;
 
-export function MarketChart({ symbol }: { symbol: string }) {
+const Y_TICK_COUNT = 5;
+
+export function MarketChart({ symbol, currency }: { symbol: string; currency?: string }) {
   const fillGradientId = `market-chart-fill-${useId().replace(/:/g, "")}`;
   const [presetId, setPresetId] = useState(DEFAULT_CHART_PRESET_ID);
   const [points, setPoints] = useState<Point[]>([]);
@@ -86,31 +97,54 @@ export function MarketChart({ symbol }: { symbol: string }) {
     const min = Math.min(...closes);
     const max = Math.max(...closes);
     const span = max - min || 1;
-    const innerW = VIEW_W - 2 * PAD;
-    const innerH = VIEW_H - 2 * PAD;
+    const plotW = VIEW_W - PLOT_LEFT - PAD_R;
+    const plotH = PLOT_BOTTOM - PLOT_TOP;
 
-    const xAt = (i: number) => PAD + (i / (points.length - 1)) * innerW;
-    const yAt = (price: number) => PAD + (1 - (price - min) / span) * innerH;
+    const xAt = (i: number) => PLOT_LEFT + (i / (points.length - 1)) * plotW;
+    const yAt = (price: number) => PLOT_TOP + (1 - (price - min) / span) * plotH;
+
+    const yTicks = Array.from(
+      { length: Y_TICK_COUNT },
+      (_, i) => max - (i / (Y_TICK_COUNT - 1)) * (max - min),
+    );
+
+    const axisSummary = `${formatAxisPrice(min, currency)} to ${formatAxisPrice(max, currency)}`;
 
     const lineD = points
       .map((p, i) => `${i === 0 ? "M" : "L"} ${xAt(i).toFixed(1)} ${yAt(p.c).toFixed(1)}`)
       .join(" ");
-    const areaD = `${lineD} L ${xAt(points.length - 1).toFixed(1)} ${VIEW_H - PAD} L ${PAD} ${VIEW_H - PAD} Z`;
+    const areaD = `${lineD} L ${xAt(points.length - 1).toFixed(1)} ${AXIS_Y} L ${PLOT_LEFT} ${AXIS_Y} Z`;
 
     chartBody = (
       <svg
         className="market-chart-svg"
         viewBox={`0 0 ${VIEW_W} ${VIEW_H}`}
-        preserveAspectRatio="none"
+        preserveAspectRatio="xMidYMid meet"
         role="img"
-        aria-label={`Price chart for ${symbol}, ${activePreset.caption}`}
+        aria-label={`Price chart for ${symbol}, ${activePreset.caption}, ${axisSummary}`}
       >
+        <title>{`Adjusted close from ${axisSummary.replace(" to ", " through ")}`}</title>
         <defs>
           <linearGradient id={fillGradientId} x1="0" x2="0" y1="0" y2="1">
             <stop offset="0%" stopColor="var(--gold)" stopOpacity="0.22" />
             <stop offset="100%" stopColor="var(--gold)" stopOpacity="0" />
           </linearGradient>
         </defs>
+
+        {/* Horizontal gridlines at price ticks */}
+        <g aria-hidden="true">
+          {yTicks.map((price, i) => (
+            <line
+              key={`grid-${price}-${i}`}
+              className="market-chart-grid-line"
+              x1={PLOT_LEFT}
+              y1={yAt(price)}
+              x2={VIEW_W - PAD_R}
+              y2={yAt(price)}
+            />
+          ))}
+        </g>
+
         <path d={areaD} fill={`url(#${fillGradientId})`} />
         <path
           d={lineD}
@@ -120,11 +154,27 @@ export function MarketChart({ symbol }: { symbol: string }) {
           strokeLinecap="round"
           strokeLinejoin="round"
         />
+
+        <g aria-hidden="true">
+          {yTicks.map((price, i) => (
+            <text
+              key={`ylab-${price}-${i}`}
+              className="market-chart-y-tick-label"
+              x={LABEL_W}
+              y={yAt(price)}
+              dominantBaseline="middle"
+              textAnchor="end"
+            >
+              {formatAxisPrice(price, currency)}
+            </text>
+          ))}
+        </g>
+
         <line
-          x1={PAD}
-          y1={VIEW_H - PAD}
-          x2={VIEW_W - PAD}
-          y2={VIEW_H - PAD}
+          x1={PLOT_LEFT}
+          y1={AXIS_Y}
+          x2={VIEW_W - PAD_R}
+          y2={AXIS_Y}
           stroke="rgba(141, 172, 214, 0.35)"
           strokeWidth={1}
         />
@@ -157,7 +207,7 @@ export function MarketChart({ symbol }: { symbol: string }) {
 
       <p className="market-chart-caption">
         {activePreset.caption}
-        {hasRenderableChart ? ` · ${symbol}` : ""}
+        {hasRenderableChart ? ` · Adjusted close · ${symbol}` : ""}
       </p>
     </div>
   );

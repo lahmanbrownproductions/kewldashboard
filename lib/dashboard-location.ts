@@ -16,6 +16,20 @@ export const DEFAULT_DASHBOARD_LOCATION: DashboardLocation = {
 
 const TIMEZONE_PATTERN = /^[\w/+-]+$/;
 
+export const IANA_TIMEZONE_PATTERN = TIMEZONE_PATTERN;
+
+/** Presets shown in station-time timezone modal and used when geocode returns no zone (hero keeps existing). */
+export const DASHBOARD_TIMEZONE_PRESETS = [
+  { value: "America/New_York", label: "Eastern" },
+  { value: "America/Chicago", label: "Central" },
+  { value: "America/Denver", label: "Mountain" },
+  { value: "America/Los_Angeles", label: "Pacific" },
+  { value: "America/Anchorage", label: "Alaska" },
+  { value: "Pacific/Honolulu", label: "Hawaii" },
+  { value: "America/Phoenix", label: "Arizona" },
+  { value: "UTC", label: "UTC" },
+] as const;
+
 export function parseDashboardLocation(raw: string | null): DashboardLocation | null {
   if (!raw) {
     return null;

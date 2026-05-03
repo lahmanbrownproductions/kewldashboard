@@ -4,13 +4,38 @@ import { useMemo } from "react";
 
 import { useDashboardLocation } from "@/components/dashboard-location-context";
 
+/** Windy iframe: fewer fixed overlays than RainViewer (logo pill + live/time bar). Embed ToS still apply. */
+function windyRadarEmbedUrl(latitude: number, longitude: number, zoom: number): string {
+  const lat = latitude.toFixed(4);
+  const lon = longitude.toFixed(4);
+  const qs = new URLSearchParams([
+    ["lat", lat],
+    ["lon", lon],
+    ["detailLat", lat],
+    ["detailLon", lon],
+    ["zoom", String(zoom)],
+    ["level", "surface"],
+    ["overlay", "radar"],
+    ["type", "map"],
+    ["location", "coordinates"],
+    ["calendar", "now"],
+    ["pressure", ""],
+    ["marker", ""],
+    ["menu", ""],
+    ["message", ""],
+    ["detail", "false"],
+    ["metricWind", "mph"],
+    ["metricTemp", "°F"],
+  ]);
+  return `https://embed.windy.com/embed2.html?${qs.toString()}`;
+}
+
 export function LocalMapPanels() {
   const { location } = useDashboardLocation();
 
-  const rainViewerSrc = useMemo(() => {
+  const radarSrc = useMemo(() => {
     const zoom = 8;
-    const { latitude: lat, longitude: lon } = location;
-    return `https://www.rainviewer.com/map.html?loc=${lat},${lon},${zoom}&oFa=0&oC=0&oU=1&oCS=1&oF=1&oAP=1&c=1&o=83&lm=1&layer=radar&sm=1&sn=1`;
+    return windyRadarEmbedUrl(location.latitude, location.longitude, zoom);
   }, [location.latitude, location.longitude]);
 
   const wazeSrc = useMemo(() => {
@@ -25,12 +50,16 @@ export function LocalMapPanels() {
       <article id="radar" className="panel map-panel radar-panel scroll-target">
         <div className="panel-heading">
           <span>Weather Radar</span>
-          <strong>RainViewer Live</strong>
+          <strong className="map-panel-attribution">
+            <a href="https://www.windy.com" target="_blank" rel="noreferrer noopener">
+              Windy
+            </a>
+          </strong>
         </div>
         <iframe
           key={`radar-${location.latitude}-${location.longitude}`}
-          title={`RainViewer radar near ${areaLabel}`}
-          src={rainViewerSrc}
+          title={`Radar near ${areaLabel}`}
+          src={radarSrc}
           className="map-frame"
           loading="lazy"
           allowFullScreen

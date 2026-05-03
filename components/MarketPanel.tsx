@@ -237,7 +237,7 @@ export function MarketPanel() {
           </div>
         ) : (
           <div id="market-panel-chart" role="tabpanel" aria-labelledby="market-tab-chart">
-            <MarketChart symbol={quote?.symbol ?? symbol} />
+            <MarketChart symbol={quote?.symbol ?? symbol} currency={quote?.currency} />
           </div>
         )}
       </div>

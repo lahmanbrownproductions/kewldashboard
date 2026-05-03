@@ -1,6 +1,6 @@
 import { APP_MASTHEAD_LABEL } from "@/lib/app-meta";
 
-/** Aligns with panel border accents in globals.css (top-grid / data-bank / radar / etc.). */
+/** Aligns with panel border accents & rail segments (#systems overview orange, radar peach, etc.). */
 export type PillAccent = "gold" | "blue" | "peach" | "purple" | "orange";
 
 export type ControlPill = {
@@ -12,9 +12,9 @@ export type ControlPill = {
 
 /** One pill per dashboard panel; labels match panel headings (see components). */
 export const CONTROL_PILLS: ControlPill[] = [
-  { label: "Station Time", targetId: "clock", accent: "gold" },
-  { label: "Atmospheric Scan", targetId: "weather", accent: "gold" },
-  { label: "Market Telemetry", targetId: "markets", accent: "gold" },
+  { label: "Station Time", targetId: "clock", accent: "orange" },
+  { label: "Atmospheric Scan", targetId: "weather", accent: "orange" },
+  { label: "Market Telemetry", targetId: "markets", accent: "orange" },
   { label: "Market Core", targetId: "watchlist", accent: "gold" },
   { label: "Weather Radar", targetId: "radar", accent: "peach" },
   { label: "Traffic", targetId: "traffic", accent: "purple" },

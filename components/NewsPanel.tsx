@@ -12,8 +12,6 @@ const DEFAULT_RSS_URL = "https://joffreswait.substack.com/feed";
 const STORAGE_KEY = "kewldashboard.newsRssFeeds.v1";
 const MAX_FEEDS = 8;
 
-type MainTab = "google" | "rss";
-
 function normalizeInputUrl(raw: string): string | null {
   const t = raw.trim();
   if (!t) {
@@ -43,12 +41,17 @@ function feedLabel(url: string): string {
   }
 }
 
-type RssApiOk = { channelTitle: string; items: NewsItem[] };
-type RssApiErr = { error: string };
+/** HTML that survives sanitization — required for in-app reader (no iframe). */
+function sanitizableArticleHtml(item: NewsItem): string | null {
+  const raw = item.contentHtml?.trim();
+  if (!raw) {
+    return null;
+  }
+  const clean = DOMPurify.sanitize(raw, { USE_PROFILES: { html: true } });
+  return clean.length > 0 ? clean : null;
+}
 
-type RssReaderState = { url: string; title: string; contentHtml?: string };
-
-function readerIframeSrc(link: string): string | null {
+function canonicalArticleUrl(link: string): string | null {
   try {
     const u = new URL(link);
     if (u.protocol !== "https:" && u.protocol !== "http:") {
@@ -63,8 +66,12 @@ function readerIframeSrc(link: string): string | null {
   }
 }
 
-export function NewsPanel({ initialGoogleNews }: { initialGoogleNews: NewsItem[] }) {
-  const [mainTab, setMainTab] = useState<MainTab>("google");
+type RssApiOk = { channelTitle: string; items: NewsItem[] };
+type RssApiErr = { error: string };
+
+type ArticleReaderState = { canonicalUrl: string; title: string; contentHtml: string };
+
+export function NewsPanel() {
   const [rssUrls, setRssUrls] = useState<string[]>([]);
   const [activeRssUrl, setActiveRssUrl] = useState<string | null>(null);
   const [rssItems, setRssItems] = useState<NewsItem[]>([]);
@@ -72,7 +79,7 @@ export function NewsPanel({ initialGoogleNews }: { initialGoogleNews: NewsItem[]
   const [rssLoading, setRssLoading] = useState(false);
   const [rssError, setRssError] = useState<string | null>(null);
   const [feedInput, setFeedInput] = useState("");
-  const [rssReader, setRssReader] = useState<RssReaderState | null>(null);
+  const [articleReader, setArticleReader] = useState<ArticleReaderState | null>(null);
   const [readerHost, setReaderHost] = useState<HTMLElement | null>(null);
 
   useEffect(() => {
@@ -80,12 +87,12 @@ export function NewsPanel({ initialGoogleNews }: { initialGoogleNews: NewsItem[]
   }, []);
 
   useEffect(() => {
-    if (!rssReader) {
+    if (!articleReader) {
       return;
     }
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
-        setRssReader(null);
+        setArticleReader(null);
       }
     };
     document.addEventListener("keydown", onKey);
@@ -95,11 +102,11 @@ export function NewsPanel({ initialGoogleNews }: { initialGoogleNews: NewsItem[]
       document.removeEventListener("keydown", onKey);
       document.body.style.overflow = prevOverflow;
     };
-  }, [rssReader]);
+  }, [articleReader]);
 
   useEffect(() => {
-    setRssReader(null);
-  }, [mainTab, activeRssUrl]);
+    setArticleReader(null);
+  }, [activeRssUrl]);
 
   useEffect(() => {
     let parsed: string[] = [];
@@ -139,7 +146,7 @@ export function NewsPanel({ initialGoogleNews }: { initialGoogleNews: NewsItem[]
   }, [rssUrls]);
 
   useEffect(() => {
-    if (mainTab !== "rss" || !activeRssUrl) {
+    if (!activeRssUrl) {
       return;
     }
 
@@ -182,7 +189,7 @@ export function NewsPanel({ initialGoogleNews }: { initialGoogleNews: NewsItem[]
     return () => {
       cancelled = true;
     };
-  }, [mainTab, activeRssUrl]);
+  }, [activeRssUrl]);
 
   const addFeed = useCallback(
     (e: FormEvent) => {
@@ -231,138 +238,111 @@ export function NewsPanel({ initialGoogleNews }: { initialGoogleNews: NewsItem[]
     }
   }, [activeRssUrl, rssUrls]);
 
-  const headingDetail =
-    mainTab === "google" ? "Google News" : rssLoading ? "Loading…" : channelTitle || "RSS";
+  const headingDetail = rssLoading ? "Loading…" : channelTitle || "RSS";
 
-  const displayItems = mainTab === "google" ? initialGoogleNews : rssItems;
-
-  const listKeyPrefix = useMemo(() => (mainTab === "google" ? "g" : "r"), [mainTab]);
+  const renderableItems = useMemo(
+    () => rssItems.filter((item) => sanitizableArticleHtml(item) !== null),
+    [rssItems],
+  );
 
   const sanitizedReaderHtml = useMemo(() => {
-    const raw = rssReader?.contentHtml?.trim();
+    const raw = articleReader?.contentHtml?.trim();
     if (!raw) {
       return null;
     }
     const clean = DOMPurify.sanitize(raw, { USE_PROFILES: { html: true } });
     return clean.length > 0 ? clean : null;
-  }, [rssReader]);
+  }, [articleReader]);
 
-  const openRssArticle = useCallback((item: NewsItem) => {
-    const src = readerIframeSrc(item.link);
-    if (!src) {
+  const openArticle = useCallback((item: NewsItem) => {
+    const html = item.contentHtml?.trim();
+    const canonicalUrl = canonicalArticleUrl(item.link);
+    if (!html || !sanitizableArticleHtml(item) || !canonicalUrl) {
       playErrorBeep();
       return;
     }
-    setRssReader({
-      url: src,
+    setArticleReader({
+      canonicalUrl,
       title: item.title,
-      contentHtml: item.contentHtml,
+      contentHtml: html,
     });
   }, []);
 
   return (
-    <section className="panel news-panel scroll-target" aria-label="Latest news" id="news">
+    <section className="panel news-panel scroll-target" aria-label="RSS news" id="news">
       <div className="panel-heading">
         <span>Subspace Feed</span>
         <strong>{headingDetail}</strong>
       </div>
 
-      <div className="market-panel-tabs news-panel-tabs" role="tablist" aria-label="News source">
-        <button
-          type="button"
-          role="tab"
-          aria-selected={mainTab === "google"}
-          className={mainTab === "google" ? "is-active" : ""}
-          onClick={() => setMainTab("google")}
-        >
-          Google News
-        </button>
-        <button
-          type="button"
-          role="tab"
-          aria-selected={mainTab === "rss"}
-          className={mainTab === "rss" ? "is-active" : ""}
-          onClick={() => setMainTab("rss")}
-        >
-          RSS
-        </button>
+      <div className="news-rss-controls">
+        <div className="market-panel-tabs news-feed-tabs" role="tablist" aria-label="Saved RSS feeds">
+          {rssUrls.map((url) => (
+            <button
+              key={url}
+              type="button"
+              role="tab"
+              aria-selected={url === activeRssUrl}
+              title={url}
+              className={url === activeRssUrl ? "is-active" : ""}
+              onClick={() => setActiveRssUrl(url)}
+            >
+              {feedLabel(url)}
+            </button>
+          ))}
+        </div>
+        <form className="watchlist-form news-rss-form" onSubmit={addFeed}>
+          <input
+            type="url"
+            name="feedUrl"
+            placeholder="Full-text feed URL (e.g. Substack …/feed)"
+            autoComplete="off"
+            value={feedInput}
+            onChange={(ev) => setFeedInput(ev.target.value)}
+          />
+          <button type="submit">Add feed</button>
+        </form>
+        {rssUrls.length > 0 && activeRssUrl ? (
+          <button type="button" className="news-rss-remove" onClick={removeActiveFeed}>
+            Remove current feed
+          </button>
+        ) : null}
+        <p className="news-rss-hint">
+          Only stories with HTML in the feed are listed—headline-only feeds (many news wires) stay hidden unless you swap the source.
+        </p>
+        {rssError ? <p className="news-rss-error">{rssError}</p> : null}
       </div>
 
-      {mainTab === "rss" ? (
-        <div className="news-rss-controls">
-          <div className="market-panel-tabs news-feed-tabs" role="tablist" aria-label="Saved RSS feeds">
-            {rssUrls.map((url) => (
-              <button
-                key={url}
-                type="button"
-                role="tab"
-                aria-selected={url === activeRssUrl}
-                title={url}
-                className={url === activeRssUrl ? "is-active" : ""}
-                onClick={() => setActiveRssUrl(url)}
-              >
-                {feedLabel(url)}
-              </button>
-            ))}
-          </div>
-          <form className="watchlist-form news-rss-form" onSubmit={addFeed}>
-            <input
-              type="url"
-              name="feedUrl"
-              placeholder="https://example.substack.com/feed"
-              autoComplete="off"
-              value={feedInput}
-              onChange={(ev) => setFeedInput(ev.target.value)}
-            />
-            <button type="submit">Add feed</button>
-          </form>
-          {rssUrls.length > 0 && activeRssUrl ? (
-            <button type="button" className="news-rss-remove" onClick={removeActiveFeed}>
-              Remove current feed
-            </button>
-          ) : null}
-          {rssError ? <p className="news-rss-error">{rssError}</p> : null}
-        </div>
-      ) : null}
-
-      <div className="news-list" aria-busy={mainTab === "rss" && rssLoading}>
-        {mainTab === "rss" && rssLoading ? (
+      <div className="news-list" aria-busy={rssLoading}>
+        {rssLoading ? (
           <p className="news-rss-loading">Scanning subspace channels…</p>
-        ) : mainTab === "rss" && !activeRssUrl ? (
-          <p className="news-rss-loading">Add an RSS or Substack feed URL above.</p>
+        ) : !activeRssUrl ? (
+          <p className="news-rss-loading">Add a full-text RSS feed URL above.</p>
+        ) : renderableItems.length === 0 ? (
+          <p className="news-rss-loading">
+            Nothing in this feed includes article markup. Try Substack, WordPress <code>/feed/</code>, or another source
+            that publishes <code>content:encoded</code> or full HTML descriptions—not headline-only RSS.
+          </p>
         ) : (
-          displayItems.map((item) =>
-            mainTab === "rss" ? (
-              <button
-                key={`${listKeyPrefix}-${item.link}-${item.title}`}
-                type="button"
-                className="news-list-card"
-                onClick={() => openRssArticle(item)}
-              >
-                <span>{item.source}</span>
-                <strong>{item.title}</strong>
-              </button>
-            ) : (
-              <a
-                key={`${listKeyPrefix}-${item.link}-${item.title}`}
-                className="news-list-card"
-                href={item.link}
-                target="_blank"
-                rel="noreferrer"
-              >
-                <span>{item.source}</span>
-                <strong>{item.title}</strong>
-              </a>
-            ),
-          )
+          renderableItems.map((item) => (
+            <button
+              key={`r-${item.link}-${item.title}`}
+              type="button"
+              className="news-list-card"
+              onClick={() => openArticle(item)}
+            >
+              <span>{item.source}</span>
+              <strong>{item.title}</strong>
+            </button>
+          ))
         )}
       </div>
 
-      {readerHost && rssReader
+      {readerHost && articleReader
         ? createPortal(
             <div
               className="news-reader-backdrop"
-              onClick={() => setRssReader(null)}
+              onClick={() => setArticleReader(null)}
               role="presentation"
             >
               <div
@@ -373,14 +353,14 @@ export function NewsPanel({ initialGoogleNews }: { initialGoogleNews: NewsItem[]
                 onClick={(e) => e.stopPropagation()}
               >
                 <header className="news-reader-toolbar">
-                  <h2 id="news-reader-title">{rssReader.title}</h2>
+                  <h2 id="news-reader-title">{articleReader.title}</h2>
                   <div className="news-reader-actions">
-                    <button type="button" className="news-reader-close" onClick={() => setRssReader(null)}>
+                    <button type="button" className="news-reader-close" onClick={() => setArticleReader(null)}>
                       Close
                     </button>
                     <a
                       className="news-reader-external"
-                      href={rssReader.url}
+                      href={articleReader.canonicalUrl}
                       target="_blank"
                       rel="noreferrer"
                     >
@@ -396,18 +376,9 @@ export function NewsPanel({ initialGoogleNews }: { initialGoogleNews: NewsItem[]
                     />
                   </div>
                 ) : (
-                  <>
-                    <p className="news-reader-note">
-                      No full article HTML in this feed; showing the live page. Use Open in tab if the frame is blank.
-                    </p>
-                    <iframe
-                      key={rssReader.url}
-                      className="news-reader-frame"
-                      src={rssReader.url}
-                      title={rssReader.title}
-                      referrerPolicy="no-referrer-when-downgrade"
-                    />
-                  </>
+                  <p className="news-reader-note">
+                    This story could not be sanitized for in-app display. Use Open in tab.
+                  </p>
                 )}
               </div>
             </div>,

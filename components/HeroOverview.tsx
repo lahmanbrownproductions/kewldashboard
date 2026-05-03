@@ -2,7 +2,11 @@
 
 import { FormEvent, useEffect, useState } from "react";
 
-import { formatLocationTagline } from "@/lib/dashboard-location";
+import {
+  formatLocationTagline,
+  IANA_TIMEZONE_PATTERN,
+  type DashboardLocation,
+} from "@/lib/dashboard-location";
 import { playErrorBeep } from "@/lib/button-beep";
 import { scrollToDashboardTarget, type ControlPill } from "@/lib/dashboard-pills";
 import { useDashboardLocation } from "@/components/dashboard-location-context";
@@ -10,19 +14,6 @@ import { useDashboardLocation } from "@/components/dashboard-location-context";
 type HeroOverviewProps = {
   controlPills: ControlPill[];
 };
-
-const TIMEZONE_OPTIONS = [
-  { value: "America/New_York", label: "Eastern" },
-  { value: "America/Chicago", label: "Central" },
-  { value: "America/Denver", label: "Mountain" },
-  { value: "America/Los_Angeles", label: "Pacific" },
-  { value: "America/Anchorage", label: "Alaska" },
-  { value: "Pacific/Honolulu", label: "Hawaii" },
-  { value: "America/Phoenix", label: "Arizona" },
-  { value: "UTC", label: "UTC" },
-] as const;
-
-const IANA_TIMEZONE = /^[\w/+-]+$/;
 
 type GeocodeResponse = {
   error?: string;
@@ -35,13 +26,11 @@ type GeocodeResponse = {
 export function HeroOverview({ controlPills }: HeroOverviewProps) {
   const { location, setLocation } = useDashboardLocation();
   const [label, setLabel] = useState(location.label);
-  const [timezone, setTimezone] = useState(location.timezone);
   const [geocodeError, setGeocodeError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     setLabel(location.label);
-    setTimezone(location.timezone);
   }, [location]);
 
   async function saveLocation(event: FormEvent<HTMLFormElement>) {
@@ -69,18 +58,19 @@ export function HeroOverview({ controlPills }: HeroOverviewProps) {
 
       const nextLabel = typeof data.label === "string" ? data.label : trimmedLabel;
       const resolvedTimezone =
-        typeof data.timezone === "string" && IANA_TIMEZONE.test(data.timezone.trim())
+        typeof data.timezone === "string" && IANA_TIMEZONE_PATTERN.test(data.timezone.trim())
           ? data.timezone.trim()
-          : timezone;
+          : location.timezone;
 
-      setLocation({
+      const next: DashboardLocation = {
         label: nextLabel,
         latitude: data.latitude,
         longitude: data.longitude,
         timezone: resolvedTimezone,
-      });
+      };
+
+      setLocation(next);
       setLabel(nextLabel);
-      setTimezone(resolvedTimezone);
     } catch (caught) {
       playErrorBeep();
       setGeocodeError(caught instanceof Error ? caught.message : "Could not save location.");
@@ -92,7 +82,7 @@ export function HeroOverview({ controlPills }: HeroOverviewProps) {
   return (
     <>
       <div className="hero-intro">
-        <p className="eyebrow">LCARS 47</p>
+        <p className="eyebrow">lahmanbrownproductions</p>
         <h1>Kewl Dashboard</h1>
         <p className="hero-copy">{formatLocationTagline(location.label)}</p>
         <div className="control-pills" aria-label="Auxiliary controls">
@@ -113,8 +103,8 @@ export function HeroOverview({ controlPills }: HeroOverviewProps) {
       </div>
       <div id="local-config" className="status-bank scroll-target" aria-label="Dashboard status">
         <form className="hero-location-form" onSubmit={saveLocation} aria-label="Dashboard location">
-          <div className="hero-location-fields">
-            <label className="hero-location-field">
+          <div className="hero-location-row">
+            <label className="hero-location-field hero-location-place">
               <span className="sr-only">Place name</span>
               <input
                 value={label}
@@ -128,27 +118,10 @@ export function HeroOverview({ controlPills }: HeroOverviewProps) {
                 disabled={isSaving}
               />
             </label>
-            <label className="hero-location-field hero-location-tz">
-              <span className="sr-only">Timezone</span>
-              <select
-                value={timezone}
-                onChange={(event) => setTimezone(event.target.value)}
-                disabled={isSaving}
-              >
-                {!TIMEZONE_OPTIONS.some((option) => option.value === timezone) ? (
-                  <option value={timezone}>{timezone}</option>
-                ) : null}
-                {TIMEZONE_OPTIONS.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-            </label>
+            <button type="submit" className="hero-location-save" disabled={isSaving}>
+              {isSaving ? "Looking up…" : "Save location"}
+            </button>
           </div>
-          <button type="submit" className="hero-location-save" disabled={isSaving}>
-            {isSaving ? "Looking up…" : "Save location"}
-          </button>
           {geocodeError ? <p className="hero-location-geocode-error">{geocodeError}</p> : null}
         </form>
         <div className="status-bank-stats">

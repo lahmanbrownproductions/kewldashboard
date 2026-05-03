@@ -10,7 +10,6 @@ import { DEFAULT_DASHBOARD_LOCATION } from "@/lib/dashboard-location";
 import { LcarsRailHeights } from "@/components/LcarsRailHeights";
 import { LcarsRailNav } from "@/components/LcarsRailNav";
 import { NewsPanel } from "@/components/NewsPanel";
-import { getNewsItems } from "@/lib/news";
 import { getWeatherReport } from "@/lib/weather";
 
 const commandBars = [
@@ -20,10 +19,7 @@ const commandBars = [
 ];
 
 export default async function Home() {
-  const [newsItems, weatherReport] = await Promise.all([
-    getNewsItems(),
-    getWeatherReport(DEFAULT_DASHBOARD_LOCATION),
-  ]);
+  const weatherReport = await getWeatherReport(DEFAULT_DASHBOARD_LOCATION);
 
   return (
     <main className="dashboard-shell">
@@ -55,7 +51,7 @@ export default async function Home() {
 
           <LocalMapPanels />
 
-          <NewsPanel initialGoogleNews={newsItems} />
+          <NewsPanel />
         </div>
       </div>
     </main>
