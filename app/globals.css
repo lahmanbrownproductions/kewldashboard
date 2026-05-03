@@ -986,7 +986,7 @@ h1 {
 .watchlist-row {
   position: relative;
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-columns: auto auto minmax(0, 1fr);
   align-items: stretch;
   gap: 0.55rem;
   min-height: 3.25rem;
@@ -1003,6 +1003,55 @@ h1 {
   background: var(--lcars-row-hover-vail), var(--panel-strong);
   outline: var(--lcars-row-hover-outline);
   box-shadow: var(--lcars-row-hover-inset);
+}
+
+.watchlist-row.is-watchlist-drop-target {
+  outline: 2px dashed var(--gold);
+  outline-offset: 3px;
+}
+
+.watchlist-drag-handle {
+  display: grid;
+  place-items: center;
+  align-self: center;
+  width: 1.8rem;
+  height: 1.8rem;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  cursor: grab;
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.watchlist-drag-handle:active {
+  cursor: grabbing;
+}
+
+.watchlist-drag-handle:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+}
+
+.watchlist-drag-glyph {
+  pointer-events: none;
+  display: block;
+  width: 0.78rem;
+  height: 0.52rem;
+  background-color: transparent;
+  background-image:
+    linear-gradient(var(--blue), var(--blue)),
+    linear-gradient(var(--blue), var(--blue)),
+    linear-gradient(var(--blue), var(--blue));
+  background-repeat: no-repeat;
+  background-size: 100% 2px;
+  background-position:
+    center 0,
+    center 50%,
+    center 100%;
 }
 
 .watchlist-row .watchlist-remove-btn {
@@ -2150,7 +2199,7 @@ h1 {
   }
 
   .watchlist-row {
-    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-columns: auto auto minmax(0, 1fr);
     border-radius: 1.25rem;
   }
 

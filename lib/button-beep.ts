@@ -171,6 +171,10 @@ export function isButtonLikeTarget(target: EventTarget | null) {
     return false;
   }
 
+  if (target.closest("button.watchlist-drag-handle")) {
+    return false;
+  }
+
   if (target.closest("button.watchlist-row-main")) {
     return false;
   }

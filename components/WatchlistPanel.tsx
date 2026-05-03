@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
+import { DragEvent, FormEvent, useEffect, useMemo, useRef, useState } from "react";
 
 import { playErrorBeep, playSubmitBeep, playWatchlistRemoveBeep } from "@/lib/button-beep";
 import { dispatchSetMarketTelemetrySymbol } from "@/lib/market-telemetry-bridge";
@@ -24,6 +24,7 @@ type WatchlistResponse = {
 
 const DEFAULT_SYMBOLS = ["BTC-USD", "ETH-USD", "SPY", "NVDA", "AAPL", "MSFT"];
 const STORAGE_KEY = "kewldashboard.watchlist.v1";
+const DRAG_MIME = "application/x-kewldashboard-watchlist-index";
 const SYMBOL_PATTERN = /^[A-Z0-9][A-Z0-9:.\^_-]{1,31}$/;
 
 function normalizeSymbol(value: string) {
@@ -37,9 +38,23 @@ export function WatchlistPanel() {
   const [updatedAt, setUpdatedAt] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
   const quoteFetchReadyRef = useRef(false);
+  const dragFromHandleRef = useRef(false);
 
   const symbolQuery = useMemo(() => symbols.join(","), [symbols]);
+
+  useEffect(() => {
+    function clearDragHandleFlag() {
+      dragFromHandleRef.current = false;
+    }
+    window.addEventListener("pointerup", clearDragHandleFlag);
+    window.addEventListener("pointercancel", clearDragHandleFlag);
+    return () => {
+      window.removeEventListener("pointerup", clearDragHandleFlag);
+      window.removeEventListener("pointercancel", clearDragHandleFlag);
+    };
+  }, []);
 
   useEffect(() => {
     const saved = window.localStorage.getItem(STORAGE_KEY);
@@ -136,6 +151,64 @@ export function WatchlistPanel() {
     setSymbols((currentSymbols) => currentSymbols.filter((currentSymbol) => currentSymbol !== symbol));
   }
 
+  function reorderSymbols(fromIndex: number, toIndex: number) {
+    if (fromIndex === toIndex || fromIndex < 0 || toIndex < 0) {
+      return;
+    }
+    setSymbols((prev) => {
+      if (fromIndex >= prev.length || toIndex >= prev.length) {
+        return prev;
+      }
+      const next = [...prev];
+      const [moved] = next.splice(fromIndex, 1);
+      next.splice(toIndex, 0, moved);
+      return next;
+    });
+  }
+
+  function parseDraggedIndex(dataTransfer: DataTransfer): number | null {
+    const raw = dataTransfer.getData(DRAG_MIME) || dataTransfer.getData("text/plain");
+    const index = Number.parseInt(raw, 10);
+    return Number.isFinite(index) ? index : null;
+  }
+
+  function onRowDragStart(event: DragEvent<HTMLElement>, index: number) {
+    if (!dragFromHandleRef.current) {
+      event.preventDefault();
+      return;
+    }
+    event.dataTransfer.effectAllowed = "move";
+    event.dataTransfer.setData(DRAG_MIME, String(index));
+    event.dataTransfer.setData("text/plain", String(index));
+  }
+
+  function onRowDragEnd() {
+    dragFromHandleRef.current = false;
+    setDragOverIndex(null);
+  }
+
+  function onRowDragOver(event: DragEvent<HTMLElement>, index: number) {
+    event.preventDefault();
+    event.dataTransfer.dropEffect = "move";
+    setDragOverIndex(index);
+  }
+
+  function onRowDragLeave(event: DragEvent<HTMLElement>) {
+    if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
+      setDragOverIndex(null);
+    }
+  }
+
+  function onRowDrop(event: DragEvent<HTMLElement>, dropIndex: number) {
+    event.preventDefault();
+    setDragOverIndex(null);
+    const fromIndex = parseDraggedIndex(event.dataTransfer);
+    if (fromIndex === null) {
+      return;
+    }
+    reorderSymbols(fromIndex, dropIndex);
+  }
+
   function openInMarketTelemetry(symbol: string) {
     playSubmitBeep();
     dispatchSetMarketTelemetrySymbol(symbol);
@@ -167,14 +240,35 @@ export function WatchlistPanel() {
         </form>
       </div>
 
-      <div className="watchlist-grid">
-        {symbols.map((symbol) => {
+      <div className="watchlist-grid" role="list">
+        {symbols.map((symbol, index) => {
           const quote = quotes.find((item) => item.symbol === symbol);
           const changePercent = quote?.changePercent ?? null;
           const directionClass = changePercent === null ? "is-flat" : changePercent >= 0 ? "is-up" : "is-down";
 
           return (
-            <article className="watchlist-row" key={symbol}>
+            <article
+              className={`watchlist-row${dragOverIndex === index ? " is-watchlist-drop-target" : ""}`}
+              key={symbol}
+              role="listitem"
+              draggable
+              onDragStart={(event) => onRowDragStart(event, index)}
+              onDragEnd={onRowDragEnd}
+              onDragOver={(event) => onRowDragOver(event, index)}
+              onDragLeave={onRowDragLeave}
+              onDrop={(event) => onRowDrop(event, index)}
+            >
+              <button
+                type="button"
+                className="watchlist-drag-handle"
+                aria-label={`Reorder ${symbol}`}
+                title="Drag to reorder"
+                onPointerDown={() => {
+                  dragFromHandleRef.current = true;
+                }}
+              >
+                <span aria-hidden="true" className="watchlist-drag-glyph" />
+              </button>
               <button
                 type="button"
                 className="watchlist-remove-btn"
@@ -209,7 +303,7 @@ export function WatchlistPanel() {
       <p className="watchlist-note">
         {error
           ? error
-          : `${isLoading ? "Syncing" : "Updated"} ${updatedAt ? new Date(updatedAt).toLocaleTimeString() : "now"} - saved locally in this browser.`}
+          : `${isLoading ? "Syncing" : "Updated"} ${updatedAt ? new Date(updatedAt).toLocaleTimeString() : "now"} — drag :: handles to reorder; saved locally in this browser.`}
       </p>
     </section>
   );
