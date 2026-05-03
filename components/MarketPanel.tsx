@@ -28,6 +28,7 @@ type WatchlistResponse = {
 };
 
 const DEFAULT_SYMBOL = "BTC-USD";
+const LEGACY_DEFAULT_SYMBOLS = new Set(["NASDAQ:NDX"]);
 const STORAGE_KEY = "kewldashboard.marketTelemetry.v1";
 const SYMBOL_PATTERN = /^[A-Z0-9][A-Z0-9:.\^_-]{1,31}$/;
 
@@ -62,6 +63,10 @@ export function MarketPanel() {
       const parsed = JSON.parse(saved) as unknown;
       if (typeof parsed === "string") {
         const next = normalizeSymbol(parsed);
+        if (LEGACY_DEFAULT_SYMBOLS.has(next)) {
+          window.localStorage.removeItem(STORAGE_KEY);
+          return;
+        }
         if (SYMBOL_PATTERN.test(next)) {
           setSymbol(next);
           setInput(next);
