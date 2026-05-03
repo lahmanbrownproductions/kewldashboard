@@ -2,7 +2,7 @@
 
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 
-import { playErrorBeep, playSubmitBeep } from "@/lib/button-beep";
+import { playErrorBeep, playSubmitBeep, playWatchlistRemoveBeep } from "@/lib/button-beep";
 import { formatQuotePercent, formatQuotePrice } from "@/lib/quote-format";
 
 type Quote = {
@@ -131,6 +131,7 @@ export function WatchlistPanel() {
   }
 
   function removeSymbol(symbol: string) {
+    playWatchlistRemoveBeep();
     setSymbols((currentSymbols) => currentSymbols.filter((currentSymbol) => currentSymbol !== symbol));
   }
 
@@ -168,7 +169,12 @@ export function WatchlistPanel() {
 
           return (
             <article className="watchlist-row" key={symbol}>
-              <button type="button" aria-label={`Remove ${symbol}`} onClick={() => removeSymbol(symbol)}>
+              <button
+                type="button"
+                className="watchlist-remove-btn"
+                aria-label={`Remove ${symbol}`}
+                onClick={() => removeSymbol(symbol)}
+              >
                 x
               </button>
               <div>

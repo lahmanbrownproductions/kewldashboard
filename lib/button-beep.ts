@@ -1,9 +1,13 @@
 const BEEP_MAIN = "/sounds/computerbeep_65.mp3";
 const BEEP_SUBMIT = "/sounds/computerbeep_63.mp3";
+const BEEP_REFRESH = "/sounds/computerbeep_42.mp3";
+const BEEP_WATCHLIST_REMOVE = "/sounds/computerbeep_59.mp3";
 const BEEP_ERROR = "/sounds/computer_error.mp3";
 
 let audioMain: HTMLAudioElement | null = null;
 let audioSubmit: HTMLAudioElement | null = null;
+let audioRefresh: HTMLAudioElement | null = null;
+let audioWatchlistRemove: HTMLAudioElement | null = null;
 let audioErr: HTMLAudioElement | null = null;
 
 function ensureMain() {
@@ -28,6 +32,28 @@ function ensureSubmit() {
   return audioSubmit;
 }
 
+function ensureRefresh() {
+  if (typeof window === "undefined") {
+    return null;
+  }
+  if (!audioRefresh) {
+    audioRefresh = new Audio(BEEP_REFRESH);
+    audioRefresh.preload = "auto";
+  }
+  return audioRefresh;
+}
+
+function ensureWatchlistRemove() {
+  if (typeof window === "undefined") {
+    return null;
+  }
+  if (!audioWatchlistRemove) {
+    audioWatchlistRemove = new Audio(BEEP_WATCHLIST_REMOVE);
+    audioWatchlistRemove.preload = "auto";
+  }
+  return audioWatchlistRemove;
+}
+
 function ensureErr() {
   if (typeof window === "undefined") {
     return null;
@@ -39,9 +65,9 @@ function ensureErr() {
   return audioErr;
 }
 
-/** Warm buffers for main, submit, and error clips. */
+/** Warm buffers for main, submit, refresh, beep 59 (watchlist remove / reader close), and error clips. */
 export function preloadButtonBeeps() {
-  for (const audio of [ensureMain(), ensureSubmit(), ensureErr()]) {
+  for (const audio of [ensureMain(), ensureSubmit(), ensureRefresh(), ensureWatchlistRemove(), ensureErr()]) {
     if (audio) {
       void audio.load();
     }
@@ -68,6 +94,37 @@ export function playSubmitBeep() {
   audio.volume = 0.55;
   audio.currentTime = 0;
   void audio.play().catch(() => {});
+}
+
+/** RSS manual refresh—`computerbeep_42`. */
+export function playRefreshBeep() {
+  const audio = ensureRefresh();
+  if (!audio) {
+    return;
+  }
+  audio.volume = 0.55;
+  audio.currentTime = 0;
+  void audio.play().catch(() => {});
+}
+
+function playBeep59Clip() {
+  const audio = ensureWatchlistRemove();
+  if (!audio) {
+    return;
+  }
+  audio.volume = 0.55;
+  audio.currentTime = 0;
+  void audio.play().catch(() => {});
+}
+
+/** Watchlist row remove—`computerbeep_59`. */
+export function playWatchlistRemoveBeep() {
+  playBeep59Clip();
+}
+
+/** RSS article reader close (`×`)—`computerbeep_59`. */
+export function playReaderCloseBeep() {
+  playBeep59Clip();
 }
 
 export function playErrorBeep() {
@@ -107,6 +164,18 @@ export function isButtonLikeTarget(target: EventTarget | null) {
       "form.market-telemetry-form button[type='submit'], form.watchlist-form button[type='submit'], form.news-rss-form button[type='submit']",
     )
   ) {
+    return false;
+  }
+
+  if (target.closest("button.watchlist-remove-btn")) {
+    return false;
+  }
+
+  if (target.closest("button.news-reader-close-x")) {
+    return false;
+  }
+
+  if (target.closest("button.news-rss-refresh")) {
     return false;
   }
 

@@ -1446,6 +1446,67 @@ h1 {
   border-color: var(--blue);
 }
 
+.news-panel-heading {
+  align-items: flex-start;
+}
+
+.news-panel-heading__title-row {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-width: 0;
+  max-width: min(100%, 32rem);
+}
+
+.news-panel-heading__title-row strong {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.news-rss-refresh {
+  flex-shrink: 0;
+  display: inline-grid;
+  place-items: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0.3rem;
+  background: rgba(0, 0, 0, 0.35);
+  color: var(--blue);
+  cursor: pointer;
+  outline: 1px solid rgba(141, 172, 214, 0.35);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.news-rss-refresh:hover:not(:disabled) {
+  color: var(--gold);
+  outline-color: var(--gold);
+}
+
+.news-rss-refresh:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.news-rss-refresh:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+}
+
+.news-rss-refresh--loading .news-rss-refresh__icon {
+  animation: news-rss-refresh-spin 0.85s linear infinite;
+}
+
+@keyframes news-rss-refresh-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 .news-panel-main {
   display: grid;
   grid-template-rows: auto minmax(12rem, 1fr);
@@ -1549,6 +1610,10 @@ h1 {
   margin-bottom: 0;
 }
 
+/* Only the first saved feed keeps LCARS pill corners; later tabs stay square. */
+.news-feed-tabs button:not(:first-child) {
+  border-radius: 0;
+}
 .news-rss-error {
   margin: 0;
   font-family: var(--font-display), sans-serif;

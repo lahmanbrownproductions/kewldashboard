@@ -4,12 +4,14 @@ import type { FormEvent } from "react";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import DOMPurify from "dompurify";
 
-import { playErrorBeep, playSubmitBeep } from "@/lib/button-beep";
+import { playErrorBeep, playReaderCloseBeep, playRefreshBeep, playSubmitBeep } from "@/lib/button-beep";
 import type { NewsItem } from "@/lib/news-types";
 
 const DEFAULT_RSS_URL = "https://joffreswait.substack.com/feed";
 const STORAGE_KEY = "kewldashboard.newsRssFeeds.v1";
 const MAX_FEEDS = 8;
+/** Poll active feed while the dashboard is open; gentler than stock ticks. */
+const RSS_REFRESH_MS = 180_000;
 
 function normalizeInputUrl(raw: string): string | null {
   const t = raw.trim();
@@ -80,6 +82,74 @@ export function NewsPanel() {
   const [feedInput, setFeedInput] = useState("");
   const [articleReader, setArticleReader] = useState<ArticleReaderState | null>(null);
   const proseScrollRef = useRef<HTMLDivElement>(null);
+  const rssFetchGenRef = useRef(0);
+
+  const fetchActiveRss = useCallback(
+    async (kind: "initial" | "silent" | "manual") => {
+      const url = activeRssUrl;
+      if (!url) {
+        return;
+      }
+
+      if (kind === "silent" && document.visibilityState !== "visible") {
+        return;
+      }
+
+      const silent = kind === "silent";
+      const showSpinner = !silent;
+
+      const myGen = ++rssFetchGenRef.current;
+      const rssApiUrl = `/api/rss?url=${encodeURIComponent(url)}`;
+
+      if (showSpinner) {
+        setRssLoading(true);
+        setRssError(null);
+      }
+
+      try {
+        const res = await fetch(rssApiUrl);
+        const data = (await res.json()) as RssApiOk | RssApiErr;
+        if (myGen !== rssFetchGenRef.current) {
+          return;
+        }
+        if (!res.ok && "error" in data) {
+          if (!silent) {
+            setRssError(data.error);
+            setRssItems([]);
+            setChannelTitle("");
+          }
+          return;
+        }
+        if ("items" in data) {
+          setRssItems(data.items);
+          setChannelTitle(data.channelTitle);
+          setRssError(null);
+        }
+      } catch {
+        if (myGen !== rssFetchGenRef.current) {
+          return;
+        }
+        if (!silent) {
+          setRssError("Network error loading feed.");
+          setRssItems([]);
+          setChannelTitle("");
+        }
+      } finally {
+        if (myGen !== rssFetchGenRef.current) {
+          return;
+        }
+        if (showSpinner) {
+          setRssLoading(false);
+        }
+      }
+    },
+    [activeRssUrl],
+  );
+
+  const refreshRssManual = useCallback(() => {
+    playRefreshBeep();
+    void fetchActiveRss("manual");
+  }, [fetchActiveRss]);
 
   const readerCanonicalUrl = articleReader?.canonicalUrl ?? "";
   const readerTitle = articleReader?.title ?? "";
@@ -153,46 +223,25 @@ export function NewsPanel() {
       return;
     }
 
-    let cancelled = false;
-    setRssLoading(true);
-    setRssError(null);
+    void fetchActiveRss("initial");
 
-    const q = encodeURIComponent(activeRssUrl);
-    fetch(`/api/rss?url=${q}`)
-      .then(async (res) => {
-        const data = (await res.json()) as RssApiOk | RssApiErr;
-        if (cancelled) {
-          return;
-        }
-        if (!res.ok && "error" in data) {
-          setRssError(data.error);
-          setRssItems([]);
-          setChannelTitle("");
-          return;
-        }
-        if ("items" in data) {
-          setRssItems(data.items);
-          setChannelTitle(data.channelTitle);
-          setRssError(null);
-        }
-      })
-      .catch(() => {
-        if (!cancelled) {
-          setRssError("Network error loading feed.");
-          setRssItems([]);
-          setChannelTitle("");
-        }
-      })
-      .finally(() => {
-        if (!cancelled) {
-          setRssLoading(false);
-        }
-      });
+    const interval = window.setInterval(() => {
+      void fetchActiveRss("silent");
+    }, RSS_REFRESH_MS);
+
+    function onVisibilityChange() {
+      if (document.visibilityState === "visible") {
+        void fetchActiveRss("silent");
+      }
+    }
+    document.addEventListener("visibilitychange", onVisibilityChange);
 
     return () => {
-      cancelled = true;
+      rssFetchGenRef.current += 1;
+      window.clearInterval(interval);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
     };
-  }, [activeRssUrl]);
+  }, [activeRssUrl, fetchActiveRss]);
 
   const addFeed = useCallback(
     (e: FormEvent) => {
@@ -280,9 +329,28 @@ export function NewsPanel() {
 
   return (
     <section className="panel news-panel scroll-target" aria-label="RSS news" id="news">
-      <div className="panel-heading">
+      <div className="panel-heading news-panel-heading">
         <span>Subspace Feed</span>
-        <strong>{articleReader ? feedCrumbLabel : headingDetail}</strong>
+        <div className="news-panel-heading__title-row">
+          <strong>{articleReader ? feedCrumbLabel : headingDetail}</strong>
+          {activeRssUrl ? (
+            <button
+              type="button"
+              className={`news-rss-refresh${rssLoading ? " news-rss-refresh--loading" : ""}`}
+              onClick={refreshRssManual}
+              disabled={rssLoading}
+              title="Refresh feed"
+              aria-label="Refresh RSS feed"
+            >
+              <svg className="news-rss-refresh__icon" viewBox="0 0 24 24" width={18} height={18} aria-hidden>
+                <path
+                  fill="currentColor"
+                  d="M17.65 6.35A7.958 7.958 0 0012 4V1L7 6l5 5V7c2.76 0 5 2.24 5 5 0 1.13-.38 2.16-1 2.97l1.46 1.46A7.93 7.93 0 0020 12c0-2.21-.9-4.22-2.35-5.65zM12 19c-2.76 0-5-2.24-5-5 0-1.13.38-2.16 1-2.97L6.54 9.57A7.93 7.93 0 004 12c0 2.21.9 4.22 2.35 5.65A7.958 7.958 0 0012 20v3l5-5-5-5v3z"
+                />
+              </svg>
+            </button>
+          ) : null}
+        </div>
       </div>
 
       <div className="news-panel-main">
@@ -315,7 +383,10 @@ export function NewsPanel() {
                   <button
                     type="button"
                     className="news-reader-close-x"
-                    onClick={closeArticle}
+                    onClick={() => {
+                      playReaderCloseBeep();
+                      closeArticle();
+                    }}
                     title="Close and return to feed"
                     aria-label="Close article and return to feed list"
                   >
