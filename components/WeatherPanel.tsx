@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useId, useState } from "react";
 
 import { useDashboardLocation } from "@/components/dashboard-location-context";
 import type { WeatherReport } from "@/lib/weather";
@@ -12,6 +12,8 @@ type WeatherPanelProps = {
 export function WeatherPanel({ initialReport }: WeatherPanelProps) {
   const { location } = useDashboardLocation();
   const [report, setReport] = useState<WeatherReport>(initialReport);
+  const [advisoryOpen, setAdvisoryOpen] = useState(false);
+  const advisoryRegionId = useId();
 
   useEffect(() => {
     let cancelled = false;
@@ -50,7 +52,19 @@ export function WeatherPanel({ initialReport }: WeatherPanelProps) {
     >
       <div className="panel-heading">
         <span>Atmospheric Scan</span>
-        <strong>{location.label}</strong>
+        <div className="weather-panel-heading-meta">
+          <strong>{location.label}</strong>
+          <button
+            type="button"
+            className="weather-panel-info-toggle"
+            aria-expanded={advisoryOpen}
+            aria-controls={advisoryRegionId}
+            title="Weather data sources and limitations"
+            onClick={() => setAdvisoryOpen((open) => !open)}
+          >
+            i
+          </button>
+        </div>
       </div>
 
       <div className="weather-current">
@@ -77,14 +91,16 @@ export function WeatherPanel({ initialReport }: WeatherPanelProps) {
         ))}
       </div>
 
-      <div className="weather-panel-advisory" role="note">
-        <p className="weather-panel-advisory-eyebrow">Operations · sensor caveat</p>
-        <p className="weather-panel-advisory-copy">
-          Atmospheric digest above is LCARS summary telemetry only. The Weather Radar chart carries RainViewer
-          radar and optional precip/cloud tiles when available; lightning, shear profiles, and
-          hazardous-weather polygons still route through external relays (Windy / NWS from that chart).
-        </p>
-      </div>
+      {advisoryOpen ? (
+        <div id={advisoryRegionId} className="weather-panel-advisory" role="region" aria-label="Sensor caveat">
+          <p className="weather-panel-advisory-eyebrow">Operations · sensor caveat</p>
+          <p className="weather-panel-advisory-copy">
+            Atmospheric digest above is LCARS summary telemetry only. The Weather Radar chart carries RainViewer
+            radar and optional precip/cloud tiles when available; lightning, shear profiles, and
+            hazardous-weather polygons still route through external relays (Windy / NWS from that chart).
+          </p>
+        </div>
+      ) : null}
     </section>
   );
 }

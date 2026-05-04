@@ -932,6 +932,52 @@ h1 {
   text-transform: uppercase;
 }
 
+.weather-panel-heading-meta {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.55rem;
+  flex-shrink: 0;
+}
+
+.weather-panel-info-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 1.65rem;
+  height: 1.65rem;
+  padding: 0;
+  border: 1px solid rgba(141, 172, 214, 0.42);
+  border-radius: 50%;
+  background: rgba(8, 6, 10, 0.92);
+  color: var(--gold);
+  font-family: var(--font-display), sans-serif;
+  font-size: 0.62rem;
+  font-weight: 900;
+  font-style: italic;
+  letter-spacing: 0.02em;
+  line-height: 1;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.weather-panel-info-toggle:hover {
+  border-color: var(--orange);
+  color: var(--orange);
+}
+
+.weather-panel-info-toggle:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+}
+
+.weather-panel-info-toggle[aria-expanded="true"] {
+  border-color: var(--peach);
+  color: var(--peach);
+  background: rgba(201, 126, 95, 0.14);
+}
+
 .weather-panel,
 .market-panel {
   overflow: hidden;
@@ -1298,6 +1344,14 @@ h1 {
 
 .market-panel-heading {
   align-items: start;
+  flex-wrap: wrap;
+  row-gap: 0.65rem;
+  column-gap: 1rem;
+}
+
+.market-panel-heading > div:first-child {
+  flex: 1 1 auto;
+  min-width: 0;
 }
 
 .market-panel-heading > div {
@@ -1309,9 +1363,11 @@ h1 {
   position: relative;
   z-index: 1;
   display: grid;
-  grid-template-columns: minmax(7rem, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) auto;
   gap: 0.4rem;
-  min-width: min(20rem, 100%);
+  flex: 1 1 14rem;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .market-telemetry-form input,
@@ -2326,10 +2382,29 @@ h1 {
   }
 
   .watchlist-heading,
-  .watchlist-form,
-  .market-panel-heading,
-  .market-telemetry-form {
+  .watchlist-form {
     grid-template-columns: 1fr;
+  }
+
+  .market-panel-heading {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .market-telemetry-form {
+    flex-basis: auto;
+    width: 100%;
+    max-width: none;
+    grid-template-columns: 1fr;
+  }
+
+  .market-telemetry-form button {
+    border-radius: 999px;
+    justify-self: start;
+  }
+
+  .market-telemetry-form input {
+    border-radius: 999px;
   }
 
   .watchlist-row {
