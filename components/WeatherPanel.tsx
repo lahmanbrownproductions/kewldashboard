@@ -76,6 +76,15 @@ export function WeatherPanel({ initialReport }: WeatherPanelProps) {
           </article>
         ))}
       </div>
+
+      <div className="weather-panel-advisory" role="note">
+        <p className="weather-panel-advisory-eyebrow">Operations · sensor caveat</p>
+        <p className="weather-panel-advisory-copy">
+          Atmospheric digest above is LCARS summary telemetry only. The Weather Radar chart carries RainViewer
+          radar and optional precip/cloud tiles when available; lightning, shear profiles, and
+          hazardous-weather polygons still route through external relays (Windy / NWS from that chart).
+        </p>
+      </div>
     </section>
   );
 }

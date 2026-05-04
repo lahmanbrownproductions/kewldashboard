@@ -4,6 +4,8 @@ import { ButtonBeepHandler } from "@/components/ButtonBeepHandler";
 import { DashboardLocationProvider } from "@/components/dashboard-location-context";
 import "./globals.css";
 
+const dashboardThemeBootScript = `(function(){try{var k='kewldashboard.theme.v1';var v=localStorage.getItem(k);document.documentElement.setAttribute('data-theme',v==='deep'?'deep':'standard');}catch(e){document.documentElement.setAttribute('data-theme','standard');}})();`;
+
 const orbitron = Orbitron({
   subsets: ["latin"],
   variable: "--font-display",
@@ -26,7 +28,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en" suppressHydrationWarning data-theme="standard">
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: dashboardThemeBootScript }} />
+      </head>
       <body className={`${orbitron.variable} ${shareTechMono.variable}`}>
         <DashboardLocationProvider>
           <ButtonBeepHandler />

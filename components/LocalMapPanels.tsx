@@ -34,13 +34,14 @@ export function LocalMapPanels() {
         <div className="panel-heading">
           <span>Weather Radar</span>
           <strong className="map-panel-attribution">
-            <a href="https://www.rainviewer.com/api.html" target="_blank" rel="noreferrer noopener">
+            <a href="https://www.rainviewer.com/" target="_blank" rel="noreferrer noopener">
               RainViewer
             </a>
             {" · "}
             <a href="https://carto.com/attributions" target="_blank" rel="noreferrer noopener">
               CARTO
             </a>
+            {" · "}Optional OpenWeather overlays · meteorological relays · centered on your station
           </strong>
         </div>
         <div className="map-frame map-frame-leaflet">
@@ -51,7 +52,9 @@ export function LocalMapPanels() {
       <article id="traffic" className="panel map-panel traffic-panel scroll-target">
         <div className="panel-heading">
           <span>Traffic</span>
-          <strong className="map-panel-attribution">Basemap · optional tile layer</strong>
+          <strong className="map-panel-attribution">
+            Tactical chart · helm relays for live congestion · centered on your station
+          </strong>
         </div>
         <div className="map-frame map-frame-leaflet">
           <DashboardLeafletMap center={center} variant="traffic" areaLabel={areaLabel} zoom={11} />

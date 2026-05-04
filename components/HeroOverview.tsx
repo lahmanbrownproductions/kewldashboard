@@ -2,14 +2,15 @@
 
 import { FormEvent, useEffect, useState } from "react";
 
+import { DashboardThemeToggle } from "@/components/DashboardThemeToggle";
+import { useDashboardLocation } from "@/components/dashboard-location-context";
+import { playErrorBeep } from "@/lib/button-beep";
 import {
   formatLocationTagline,
   IANA_TIMEZONE_PATTERN,
   type DashboardLocation,
 } from "@/lib/dashboard-location";
-import { playErrorBeep } from "@/lib/button-beep";
 import { scrollToDashboardTarget, type ControlPill } from "@/lib/dashboard-pills";
-import { useDashboardLocation } from "@/components/dashboard-location-context";
 
 type HeroOverviewProps = {
   controlPills: ControlPill[];
@@ -99,6 +100,7 @@ export function HeroOverview({ controlPills }: HeroOverviewProps) {
               {pill.label}
             </a>
           ))}
+          <DashboardThemeToggle />
         </div>
       </div>
       <div id="local-config" className="status-bank scroll-target" aria-label="Dashboard status">

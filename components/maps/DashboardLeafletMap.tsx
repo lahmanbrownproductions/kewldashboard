@@ -1,8 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { Control } from "leaflet";
 import "leaflet/dist/leaflet.css";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { CircleMarker, MapContainer, Pane, TileLayer, ZoomControl } from "react-leaflet";
+
+// Turbopack / granular imports may skip Leaflet's Control module side effects (Map.include for
+// `_controlCorners`). Without that, ZoomControl crashes when positioning (`bottomright`).
+void Control.extend;
 
 import { MapResizeFix } from "@/components/maps/MapResizeFix";
 import { MapViewUpdater } from "@/components/maps/MapViewUpdater";
@@ -12,171 +17,85 @@ import {
   OPENWEATHER_MAP_ATTRIBUTION,
   RAINVIEWER_ATTRIBUTION,
 } from "@/lib/maps/basemap";
-import { getOpenWeatherMapApiKey, getTrafficTileUrlTemplate } from "@/lib/maps/map-env";
+import { getOpenWeatherMapApiKey } from "@/lib/maps/map-env";
 import { openWeatherCloudsTileUrl, openWeatherPrecipitationTileUrl } from "@/lib/maps/open-weather-tiles";
 import {
   coverageTileUrlTemplate,
   fetchRainViewerMaps,
   getLatestRadarFrame,
   radarTileUrlTemplate,
-  type RainViewerMaps,
 } from "@/lib/maps/rainviewer";
 
 import "./dashboard-leaflet-map.css";
-
-const RADAR_NATIVE_MAX_ZOOM = 7;
 
 export type DashboardLeafletMapVariant = "radar" | "traffic";
 
 export type DashboardLeafletMapProps = {
   center: [number, number];
   zoom?: number;
-  variant: DashboardLeafletMapVariant;
   areaLabel: string;
+  variant: DashboardLeafletMapVariant;
 };
 
-export function DashboardLeafletMap({ center, zoom, variant, areaLabel }: DashboardLeafletMapProps) {
-  const defaultZoom = variant === "radar" ? 6 : 11;
+const RADAR_NATIVE_MAX_ZOOM = 7;
+const RAINVIEWER_REFRESH_MS = 10 * 60 * 1000;
+
+function clampZoom(zoom: number, max: number) {
+  return Math.min(Math.max(zoom, 2), max);
+}
+
+function TrafficDashboardLeafletMap({ center, zoom, areaLabel }: Omit<DashboardLeafletMapProps, "variant">) {
+  const lat = center[0];
+  const lng = center[1];
+  const stationCenter: [number, number] = [lat, lng];
+
+  const defaultZoom = 11;
   const requestedZoom = zoom ?? defaultZoom;
-  const viewZoom =
-    variant === "radar" ? Math.min(requestedZoom, RADAR_NATIVE_MAX_ZOOM) : requestedZoom;
+  const maxUiZoom = 18;
+  const viewZoom = clampZoom(requestedZoom, maxUiZoom);
+  const relayZoom = Math.min(18, Math.max(10, Math.round(viewZoom)));
 
-  const owmKey = useMemo(() => getOpenWeatherMapApiKey(), []);
-  const trafficTemplate = useMemo(() => getTrafficTileUrlTemplate(), []);
-
-  const [mapsMeta, setMapsMeta] = useState<RainViewerMaps | null>(null);
-  const [radarFetchError, setRadarFetchError] = useState<string | null>(null);
-
-  const loadRainViewer = useCallback(async () => {
-    setRadarFetchError(null);
-    const data = await fetchRainViewerMaps();
-    if (!data?.host) {
-      setRadarFetchError("Radar metadata unavailable (check network).");
-      setMapsMeta(null);
-      return;
-    }
-    setMapsMeta(data);
-  }, []);
-
-  useEffect(() => {
-    void loadRainViewer();
-    const id = window.setInterval(() => void loadRainViewer(), 300_000);
-    return () => window.clearInterval(id);
-  }, [loadRainViewer]);
-
-  const radarFrame = useMemo(() => (mapsMeta ? getLatestRadarFrame(mapsMeta) : null), [mapsMeta]);
-  const radarUrlTemplate = useMemo(() => {
-    if (!mapsMeta?.host || !radarFrame?.path) {
-      return null;
-    }
-    return radarTileUrlTemplate(mapsMeta.host, radarFrame.path, 512);
-  }, [mapsMeta, radarFrame]);
-
-  const coverageUrlTemplate = useMemo(
-    () => (mapsMeta?.host ? coverageTileUrlTemplate(mapsMeta.host, 512) : null),
-    [mapsMeta],
-  );
-
-  const [showRadar, setShowRadar] = useState(true);
-  const [showCoverage, setShowCoverage] = useState(false);
-  const [showPrecip, setShowPrecip] = useState(false);
-  const [showClouds, setShowClouds] = useState(false);
-  const [showTrafficTiles, setShowTrafficTiles] = useState(false);
-
-  useEffect(() => {
-    if (variant === "radar") {
-      setShowRadar(true);
-      setShowTrafficTiles(false);
-    } else {
-      setShowRadar(false);
-      setShowCoverage(false);
-      setShowPrecip(false);
-      setShowClouds(false);
-      setShowTrafficTiles(Boolean(trafficTemplate));
-    }
-  }, [variant, trafficTemplate]);
-
-  const precipUrl = owmKey ? openWeatherPrecipitationTileUrl(owmKey) : null;
-  const cloudsUrl = owmKey ? openWeatherCloudsTileUrl(owmKey) : null;
-
-  const centerExpr: [number, number] = [center[0], center[1]];
-  const wazeUrl = `https://waze.com/ul?ll=${center[0]},${center[1]}&zoom=11&navigate=yes`;
+  const wazeUrl = `https://waze.com/ul?ll=${lat},${lng}&zoom=${relayZoom}&navigate=yes`;
+  const googleMapsTrafficUrl = `https://www.google.com/maps/@${lat},${lng},${relayZoom}z/data=!5m1!1e1`;
 
   return (
     <div className="leaflet-map-shell" aria-label={`Map near ${areaLabel}`}>
-      {variant === "radar" && radarFetchError ? (
-        <div className="map-leaflet-banner" role="status">
-          {radarFetchError}
-        </div>
-      ) : null}
+      <div className="map-overlay-toolbar" role="toolbar" aria-label="Helm relays">
+        <a
+          className="map-layer-toggle map-layer-toggle--link is-on"
+          href={wazeUrl}
+          target="_blank"
+          rel="noreferrer noopener"
+          title="Open Waze (helm relay)"
+        >
+          Waze
+        </a>
+        <a
+          className="map-layer-toggle map-layer-toggle--link is-on"
+          href={googleMapsTrafficUrl}
+          target="_blank"
+          rel="noreferrer noopener"
+          title="Open Maps with traffic layer"
+        >
+          Maps
+        </a>
+      </div>
 
-      <div className="map-overlay-toolbar" role="toolbar" aria-label="Map overlays">
-        {variant === "radar" ? (
-          <>
-            <button
-              type="button"
-              className={`map-layer-toggle ${showRadar && radarUrlTemplate ? "is-on" : ""}`}
-              disabled={!radarUrlTemplate}
-              onClick={() => setShowRadar((v) => !v)}
-            >
-              Radar
-            </button>
-            <button
-              type="button"
-              className={`map-layer-toggle ${showCoverage ? "is-on" : ""}`}
-              disabled={!coverageUrlTemplate}
-              onClick={() => setShowCoverage((v) => !v)}
-            >
-              Coverage
-            </button>
-            <button
-              type="button"
-              className={`map-layer-toggle ${showPrecip ? "is-on" : ""}`}
-              disabled={!precipUrl}
-              title={!precipUrl ? "Set NEXT_PUBLIC_OPENWEATHERMAP_API_KEY for precip tiles" : undefined}
-              onClick={() => setShowPrecip((v) => !v)}
-            >
-              Precip
-            </button>
-            <button
-              type="button"
-              className={`map-layer-toggle ${showClouds ? "is-on" : ""}`}
-              disabled={!cloudsUrl}
-              title={!cloudsUrl ? "Set NEXT_PUBLIC_OPENWEATHERMAP_API_KEY for cloud tiles" : undefined}
-              onClick={() => setShowClouds((v) => !v)}
-            >
-              Clouds
-            </button>
-          </>
-        ) : (
-          <>
-            <button
-              type="button"
-              className={`map-layer-toggle ${showTrafficTiles ? "is-on" : ""}`}
-              disabled={!trafficTemplate}
-              title={
-                !trafficTemplate
-                  ? "Optional: NEXT_PUBLIC_MAP_TRAFFIC_TILE_URL ({z},{x},{y})"
-                  : undefined
-              }
-              onClick={() => setShowTrafficTiles((v) => !v)}
-            >
-              Traffic
-            </button>
-            <a
-              className="map-layer-toggle map-layer-toggle--link is-on"
-              href={wazeUrl}
-              target="_blank"
-              rel="noreferrer noopener"
-            >
-              Waze
-            </a>
-          </>
-        )}
+      <div className="map-helm-advisory-overlay" aria-live="polite">
+        <div className="map-helm-advisory-panel map-helm-advisory-panel--traffic">
+          <p className="map-helm-advisory-eyebrow">Mission ops · channel limitation</p>
+          <p className="map-helm-advisory-title">Live traffic not on main viewer</p>
+          <p className="map-helm-advisory-copy">
+            Shipboard LCARS resolves cartography only — congestion telemetry is not mirrored aboard this
+            terminal. Establish an&nbsp;
+            <span className="map-helm-advisory-em">off-ship navigation relay</span> via the helm shortcuts
+            above.
+          </p>
+        </div>
       </div>
 
       <MapContainer
-        center={centerExpr}
+        center={stationCenter}
         zoom={viewZoom}
         maxZoom={18}
         minZoom={2}
@@ -186,7 +105,7 @@ export function DashboardLeafletMap({ center, zoom, variant, areaLabel }: Dashbo
       >
         <ZoomControl position="bottomright" />
         <MapResizeFix />
-        <MapViewUpdater center={centerExpr} zoom={viewZoom} />
+        <MapViewUpdater center={stationCenter} zoom={viewZoom} />
 
         <TileLayer
           url={CARTO_DARK_TILE_URL}
@@ -195,62 +114,9 @@ export function DashboardLeafletMap({ center, zoom, variant, areaLabel }: Dashbo
           subdomains="abcd"
         />
 
-        {showCoverage && coverageUrlTemplate ? (
-          <TileLayer
-            url={coverageUrlTemplate}
-            attribution={RAINVIEWER_ATTRIBUTION}
-            opacity={0.42}
-            maxZoom={18}
-            maxNativeZoom={RADAR_NATIVE_MAX_ZOOM}
-            zIndex={300}
-          />
-        ) : null}
-
-        {showRadar && radarUrlTemplate ? (
-          <TileLayer
-            key={radarFrame?.path ?? "radar"}
-            url={radarUrlTemplate}
-            attribution={RAINVIEWER_ATTRIBUTION}
-            opacity={0.76}
-            maxZoom={18}
-            maxNativeZoom={RADAR_NATIVE_MAX_ZOOM}
-            zIndex={400}
-          />
-        ) : null}
-
-        {showPrecip && precipUrl ? (
-          <TileLayer
-            url={precipUrl}
-            attribution={OPENWEATHER_MAP_ATTRIBUTION}
-            opacity={0.52}
-            maxZoom={18}
-            zIndex={450}
-          />
-        ) : null}
-
-        {showClouds && cloudsUrl ? (
-          <TileLayer
-            url={cloudsUrl}
-            attribution={OPENWEATHER_MAP_ATTRIBUTION}
-            opacity={0.38}
-            maxZoom={18}
-            zIndex={460}
-          />
-        ) : null}
-
-        {variant === "traffic" && showTrafficTiles && trafficTemplate ? (
-          <TileLayer
-            url={trafficTemplate}
-            attribution="Traffic tiles (see NEXT_PUBLIC_MAP_TRAFFIC_TILE_URL)"
-            opacity={0.68}
-            maxZoom={18}
-            zIndex={500}
-          />
-        ) : null}
-
         <Pane name="station-marker" style={{ zIndex: 650 }}>
           <CircleMarker
-            center={centerExpr}
+            center={stationCenter}
             radius={9}
             pathOptions={{
               color: "#f5c96b",
@@ -262,5 +128,260 @@ export function DashboardLeafletMap({ center, zoom, variant, areaLabel }: Dashbo
         </Pane>
       </MapContainer>
     </div>
+  );
+}
+
+function RadarDashboardLeafletMap({ center, zoom, areaLabel }: Omit<DashboardLeafletMapProps, "variant">) {
+  const lat = center[0];
+  const lng = center[1];
+  const stationCenter: [number, number] = [lat, lng];
+
+  const defaultZoom = 6;
+  const requestedZoom = zoom ?? defaultZoom;
+  const maxUiZoom = RADAR_NATIVE_MAX_ZOOM;
+  const viewZoom = clampZoom(requestedZoom, maxUiZoom);
+
+  const windyUrl = `https://www.windy.com/${lat}/${lng}`;
+  const nwsUrl = `https://forecast.weather.gov/MapClick.php?lat=${lat}&lon=${lng}`;
+
+  const openWeatherKey = useMemo(() => getOpenWeatherMapApiKey(), []);
+
+  const [rainMaps, setRainMaps] = useState<Awaited<ReturnType<typeof fetchRainViewerMaps>>>(null);
+  const [rainFetchFailed, setRainFetchFailed] = useState(false);
+  const [showRadar, setShowRadar] = useState(true);
+  const [showCoverage, setShowCoverage] = useState(false);
+  const [showPrecip, setShowPrecip] = useState(false);
+  const [showClouds, setShowClouds] = useState(false);
+
+  const refreshRainViewer = useCallback(async () => {
+    const maps = await fetchRainViewerMaps();
+    if (maps) {
+      setRainMaps(maps);
+      setRainFetchFailed(false);
+    } else {
+      setRainFetchFailed(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    void refreshRainViewer();
+    const id = window.setInterval(() => {
+      void refreshRainViewer();
+    }, RAINVIEWER_REFRESH_MS);
+    return () => {
+      window.clearInterval(id);
+    };
+  }, [refreshRainViewer]);
+
+  const latestFrame = useMemo(() => (rainMaps ? getLatestRadarFrame(rainMaps) : null), [rainMaps]);
+
+  const radarTileUrl =
+    rainMaps && latestFrame ? radarTileUrlTemplate(rainMaps.host, latestFrame.path, 512) : null;
+  const coverageTileUrl = rainMaps ? coverageTileUrlTemplate(rainMaps.host, 512) : null;
+
+  const precipTileUrl = openWeatherKey ? openWeatherPrecipitationTileUrl(openWeatherKey) : null;
+  const cloudsTileUrl = openWeatherKey ? openWeatherCloudsTileUrl(openWeatherKey) : null;
+
+  const radarLayerKey = latestFrame ? String(latestFrame.time) : "radar";
+
+  const radarUnavailable = !radarTileUrl;
+  const coverageUnavailable = !coverageTileUrl;
+
+  const toggleRadar = () => setShowRadar((v) => !v);
+  const toggleCoverage = () => setShowCoverage((v) => !v);
+  const togglePrecip = () => setShowPrecip((v) => !v);
+  const toggleClouds = () => setShowClouds((v) => !v);
+
+  return (
+    <div className="leaflet-map-shell" aria-label={`Map near ${areaLabel}`}>
+      <div
+        className="map-overlay-toolbar"
+        role="toolbar"
+        aria-label="Radar overlays and meteorological relays"
+      >
+        <button
+          type="button"
+          className={`map-layer-toggle${showRadar ? " is-on" : ""}`}
+          aria-pressed={showRadar}
+          disabled={radarUnavailable}
+          title={
+            radarUnavailable
+              ? "RainViewer radar unavailable — use Windy / NWS relays"
+              : "RainViewer composite radar"
+          }
+          onClick={toggleRadar}
+        >
+          Radar
+        </button>
+        <button
+          type="button"
+          className={`map-layer-toggle${showCoverage ? " is-on" : ""}`}
+          aria-pressed={showCoverage}
+          disabled={coverageUnavailable}
+          title={coverageUnavailable ? "Coverage mask requires RainViewer metadata" : "Radar coverage mask"}
+          onClick={toggleCoverage}
+        >
+          Coverage
+        </button>
+        <button
+          type="button"
+          className={`map-layer-toggle${showPrecip ? " is-on" : ""}`}
+          aria-pressed={showPrecip}
+          disabled={!precipTileUrl}
+          title={
+            precipTileUrl
+              ? "OpenWeather precipitation layer"
+              : "Set NEXT_PUBLIC_OPENWEATHERMAP_API_KEY for precip tiles"
+          }
+          onClick={togglePrecip}
+        >
+          Precip
+        </button>
+        <button
+          type="button"
+          className={`map-layer-toggle${showClouds ? " is-on" : ""}`}
+          aria-pressed={showClouds}
+          disabled={!cloudsTileUrl}
+          title={
+            cloudsTileUrl
+              ? "OpenWeather clouds layer"
+              : "Set NEXT_PUBLIC_OPENWEATHERMAP_API_KEY for cloud tiles"
+          }
+          onClick={toggleClouds}
+        >
+          Clouds
+        </button>
+        <a
+          className="map-layer-toggle map-layer-toggle--link is-on"
+          href={windyUrl}
+          target="_blank"
+          rel="noreferrer noopener"
+          title="Open Windy — live wind & radar layers"
+        >
+          Windy
+        </a>
+        <a
+          className="map-layer-toggle map-layer-toggle--link is-on"
+          href={nwsUrl}
+          target="_blank"
+          rel="noreferrer noopener"
+          title="National Weather Service forecast & radar"
+        >
+          NWS
+        </a>
+      </div>
+
+      {rainFetchFailed && radarUnavailable ? (
+        <div className="map-leaflet-banner" role="status">
+          Radar metadata unavailable — enable relays (Windy / NWS) for full sweep.
+        </div>
+      ) : null}
+
+      <div className="map-helm-advisory-overlay" aria-live="polite">
+        <div className="map-helm-advisory-panel map-helm-advisory-panel--radar">
+          <p className="map-helm-advisory-eyebrow">Science division · atmospheric relay</p>
+          <p className="map-helm-advisory-title">Hybrid meteorological display</p>
+          <p className="map-helm-advisory-copy">
+            Composite radar (RainViewer) and optional precip/cloud tiles stream aboard when available.
+            Lightning meshes, NWS warning polygons, mesoscale modeling, and ensemble forecasts are not fully
+            mirrored here — establish a&nbsp;
+            <span className="map-helm-advisory-em">meteorological relay</span> via Windy or NWS above.
+          </p>
+        </div>
+      </div>
+
+      <MapContainer
+        center={stationCenter}
+        zoom={viewZoom}
+        maxZoom={RADAR_NATIVE_MAX_ZOOM}
+        minZoom={2}
+        className="dashboard-leaflet-map"
+        scrollWheelZoom
+        zoomControl={false}
+      >
+        <ZoomControl position="bottomright" />
+        <MapResizeFix />
+        <MapViewUpdater center={stationCenter} zoom={viewZoom} />
+
+        <TileLayer
+          url={CARTO_DARK_TILE_URL}
+          attribution={CARTO_DARK_ATTRIBUTION}
+          maxZoom={20}
+          maxNativeZoom={20}
+          subdomains="abcd"
+        />
+
+        {showCoverage && coverageTileUrl ? (
+          <Pane name="rainviewer-coverage" style={{ zIndex: 380 }}>
+            <TileLayer
+              url={coverageTileUrl}
+              attribution={RAINVIEWER_ATTRIBUTION}
+              opacity={0.38}
+              maxZoom={RADAR_NATIVE_MAX_ZOOM}
+              maxNativeZoom={RADAR_NATIVE_MAX_ZOOM}
+            />
+          </Pane>
+        ) : null}
+
+        {showRadar && radarTileUrl ? (
+          <Pane name="rainviewer-radar" style={{ zIndex: 390 }}>
+            <TileLayer
+              key={radarLayerKey}
+              url={radarTileUrl}
+              attribution={RAINVIEWER_ATTRIBUTION}
+              opacity={0.78}
+              maxZoom={RADAR_NATIVE_MAX_ZOOM}
+              maxNativeZoom={RADAR_NATIVE_MAX_ZOOM}
+            />
+          </Pane>
+        ) : null}
+
+        {showPrecip && precipTileUrl ? (
+          <Pane name="openweather-precip" style={{ zIndex: 400 }}>
+            <TileLayer
+              url={precipTileUrl}
+              attribution={OPENWEATHER_MAP_ATTRIBUTION}
+              opacity={0.55}
+              maxZoom={RADAR_NATIVE_MAX_ZOOM}
+              maxNativeZoom={18}
+            />
+          </Pane>
+        ) : null}
+
+        {showClouds && cloudsTileUrl ? (
+          <Pane name="openweather-clouds" style={{ zIndex: 410 }}>
+            <TileLayer
+              url={cloudsTileUrl}
+              attribution={OPENWEATHER_MAP_ATTRIBUTION}
+              opacity={0.45}
+              maxZoom={RADAR_NATIVE_MAX_ZOOM}
+              maxNativeZoom={18}
+            />
+          </Pane>
+        ) : null}
+
+        <Pane name="station-marker" style={{ zIndex: 650 }}>
+          <CircleMarker
+            center={stationCenter}
+            radius={9}
+            pathOptions={{
+              color: "#f5c96b",
+              weight: 2,
+              fillColor: "#c97e5f",
+              fillOpacity: 0.55,
+            }}
+          />
+        </Pane>
+      </MapContainer>
+    </div>
+  );
+}
+
+export function DashboardLeafletMap(props: DashboardLeafletMapProps) {
+  const { variant, ...rest } = props;
+  return variant === "radar" ? (
+    <RadarDashboardLeafletMap {...rest} />
+  ) : (
+    <TrafficDashboardLeafletMap {...rest} />
   );
 }
