@@ -32,6 +32,7 @@ export function LcarsRailHeights() {
 
       const systems = document.getElementById("systems");
       const watchlist = document.getElementById("watchlist");
+      const bookmarks = document.getElementById("bookmarks");
       const mapPanels = document.getElementById("map-panels");
       const radar = document.getElementById("radar");
       const traffic = document.getElementById("traffic");
@@ -40,6 +41,7 @@ export function LcarsRailHeights() {
       const minSeg = 52;
       const hOverview = Math.max(readHeight(systems), minSeg);
       const hSystems = Math.max(readHeight(watchlist), minSeg);
+      const hBookmarks = Math.max(readHeight(bookmarks), minSeg);
 
       let hRadar: number;
       let hTraffic: number;
@@ -58,6 +60,7 @@ export function LcarsRailHeights() {
         "2.3rem",
         `${hOverview}px`,
         `${hSystems}px`,
+        `${hBookmarks}px`,
         `${hRadar}px`,
         `${hTraffic}px`,
         `${hNews}px`,
@@ -70,7 +73,7 @@ export function LcarsRailHeights() {
     }
 
     function getSectionElements(): HTMLElement[] {
-      const ids = ["systems", "watchlist", "map-panels", "radar", "traffic", "news"] as const;
+      const ids = ["systems", "watchlist", "bookmarks", "map-panels", "radar", "traffic", "news"] as const;
       const list: HTMLElement[] = [];
       for (const id of ids) {
         const el = document.getElementById(id);

@@ -10,6 +10,7 @@ import { DEFAULT_DASHBOARD_LOCATION } from "@/lib/dashboard-location";
 import { LcarsRailHeights } from "@/components/LcarsRailHeights";
 import { LcarsRailNav } from "@/components/LcarsRailNav";
 import { NewsPanel } from "@/components/NewsPanel";
+import { BookmarksPanel } from "@/components/BookmarksPanel";
 import { getWeatherReport } from "@/lib/weather";
 
 const commandBars = [
@@ -48,6 +49,8 @@ export default async function Home() {
           </section>
 
           <WatchlistPanel />
+
+          <BookmarksPanel />
 
           <LocalMapPanels />
 
