@@ -16,6 +16,7 @@ export const CONTROL_PILLS: ControlPill[] = [
   { label: "Atmospheric Scan", targetId: "weather", accent: "orange" },
   { label: "Market Telemetry", targetId: "markets", accent: "orange" },
   { label: "Market Core", targetId: "watchlist", accent: "gold" },
+  { label: "Quick Links", targetId: "bookmarks", accent: "gold" },
   { label: "Weather Radar", targetId: "radar", accent: "peach" },
   { label: "Traffic", targetId: "traffic", accent: "purple" },
   { label: "Subspace Feed", targetId: "news", accent: "blue" },

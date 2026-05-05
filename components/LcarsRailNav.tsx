@@ -5,6 +5,7 @@ import { scrollToDashboardTarget } from "@/lib/dashboard-pills";
 const RAIL_LINKS = [
   { href: "#systems", label: "Overview", className: "rail-segment rail-orange" },
   { href: "#watchlist", label: "Systems", className: "rail-segment rail-gold" },
+  { href: "#bookmarks", label: "Links", className: "rail-segment rail-gold" },
   { href: "#radar", label: "Radar", className: "rail-segment rail-peach" },
   { href: "#traffic", label: "Traffic", className: "rail-segment rail-purple" },
   { href: "#news", label: "News", className: "rail-segment rail-blue" },
