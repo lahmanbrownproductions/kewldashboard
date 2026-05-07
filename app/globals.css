@@ -9,6 +9,7 @@
   --peach: #f2a13a;
   --gold: #f5c96b;
   --purple: #b77aa0;
+  --links: #9a9aff;
   --blue: #8dacd6;
   --red: #d54d12;
   --ink: #090909;
@@ -34,6 +35,7 @@
   --peach: #c98828;
   --gold: #d4a852;
   --purple: #956488;
+  --links: #8a8aee;
   --blue: #7294ba;
   --red: #b8430f;
   --ink: #020203;
@@ -307,6 +309,16 @@ iframe {
 .rail-gold {
   background: rgba(245, 201, 107, 1);
   color: var(--ink);
+}
+
+.rail-links {
+  background: var(--links);
+  color: var(--ink);
+}
+
+.rail-links:hover,
+.rail-segment.rail-links:has(.rail-segment-link:focus-visible) {
+  box-shadow: 0 0 26px rgba(154, 154, 255, 0.28);
 }
 
 .rail-peach {
@@ -1839,6 +1851,7 @@ h1 {
 
 .bookmarks-panel {
   padding: 0.9rem 1rem 1rem;
+  border-color: var(--links);
 }
 
 .bookmarks-form {
