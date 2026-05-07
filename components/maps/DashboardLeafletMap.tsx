@@ -1,13 +1,8 @@
 "use client";
 
-import { Control } from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { CircleMarker, MapContainer, Pane, TileLayer, ZoomControl } from "react-leaflet";
-
-// Turbopack / granular imports may skip Leaflet's Control module side effects (Map.include for
-// `_controlCorners`). Without that, ZoomControl crashes when positioning (`bottomright`).
-void Control.extend;
+import { CircleMarker, MapContainer, Pane, TileLayer } from "react-leaflet";
 
 import { MapResizeFix } from "@/components/maps/MapResizeFix";
 import { MapViewUpdater } from "@/components/maps/MapViewUpdater";
@@ -27,6 +22,12 @@ import {
 } from "@/lib/maps/rainviewer";
 
 import "./dashboard-leaflet-map.css";
+
+/** Leaflet supports this on `L.Map`; react-leaflet's `MapContainerProps` typings omit `zoomControlOptions`. */
+const MAP_ZOOM_BOTTOM_RIGHT = {
+  zoomControl: true,
+  zoomControlOptions: { position: "bottomright" as const },
+} as const;
 
 export type DashboardLeafletMapVariant = "radar" | "traffic";
 
@@ -101,12 +102,8 @@ function TrafficDashboardLeafletMap({ center, zoom, areaLabel }: Omit<DashboardL
         minZoom={2}
         className="dashboard-leaflet-map"
         scrollWheelZoom
-        zoomControl={false}
+        {...MAP_ZOOM_BOTTOM_RIGHT}
       >
-        <ZoomControl position="bottomright" />
-        <MapResizeFix />
-        <MapViewUpdater center={stationCenter} zoom={viewZoom} />
-
         <TileLayer
           url={CARTO_DARK_TILE_URL}
           attribution={CARTO_DARK_ATTRIBUTION}
@@ -126,6 +123,9 @@ function TrafficDashboardLeafletMap({ center, zoom, areaLabel }: Omit<DashboardL
             }}
           />
         </Pane>
+
+        <MapResizeFix />
+        <MapViewUpdater center={stationCenter} zoom={viewZoom} />
       </MapContainer>
     </div>
   );
@@ -297,12 +297,8 @@ function RadarDashboardLeafletMap({ center, zoom, areaLabel }: Omit<DashboardLea
         minZoom={2}
         className="dashboard-leaflet-map"
         scrollWheelZoom
-        zoomControl={false}
+        {...MAP_ZOOM_BOTTOM_RIGHT}
       >
-        <ZoomControl position="bottomright" />
-        <MapResizeFix />
-        <MapViewUpdater center={stationCenter} zoom={viewZoom} />
-
         <TileLayer
           url={CARTO_DARK_TILE_URL}
           attribution={CARTO_DARK_ATTRIBUTION}
@@ -372,6 +368,9 @@ function RadarDashboardLeafletMap({ center, zoom, areaLabel }: Omit<DashboardLea
             }}
           />
         </Pane>
+
+        <MapResizeFix />
+        <MapViewUpdater center={stationCenter} zoom={viewZoom} />
       </MapContainer>
     </div>
   );

@@ -37,6 +37,9 @@ export function DashboardSections({ initialWeatherReport }: DashboardSectionsPro
     window.dispatchEvent(new Event("kewldashboard:rail-order-change"));
   }, [sectionOrder]);
 
+  /** Leaflet maps break when their container is reparented (section drag-reorder). Remount maps when order changes. */
+  const mapRemountKey = sectionOrder.join("|");
+
   function renderSection(sectionId: DashboardSectionId) {
     switch (sectionId) {
       case "systems":
@@ -52,9 +55,9 @@ export function DashboardSections({ initialWeatherReport }: DashboardSectionsPro
       case "bookmarks":
         return <BookmarksPanel key={sectionId} />;
       case "radar":
-        return <LocalMapPanel key={sectionId} variant="radar" />;
+        return <LocalMapPanel key={`radar:${mapRemountKey}`} variant="radar" />;
       case "traffic":
-        return <LocalMapPanel key={sectionId} variant="traffic" />;
+        return <LocalMapPanel key={`traffic:${mapRemountKey}`} variant="traffic" />;
       case "news":
         return <NewsPanel key={sectionId} />;
     }
