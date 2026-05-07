@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 
 const RAIL_SELECTOR = ".lcars-rail";
+const RAIL_SECTION_SELECTOR = ".rail-segment[data-section-id]";
 
 function readHeight(el: Element | null): number {
   if (!el) {
@@ -22,7 +23,6 @@ export function LcarsRailHeights() {
 
     let raf = 0;
     const mqDesktop = window.matchMedia("(min-width: 761px)");
-    const mqWideMaps = window.matchMedia("(min-width: 1181px)");
 
     function apply() {
       if (!mqDesktop.matches) {
@@ -30,38 +30,14 @@ export function LcarsRailHeights() {
         return;
       }
 
-      const systems = document.getElementById("systems");
-      const watchlist = document.getElementById("watchlist");
-      const mapPanels = document.getElementById("map-panels");
-      const radar = document.getElementById("radar");
-      const traffic = document.getElementById("traffic");
-      const news = document.getElementById("news");
-
       const minSeg = 52;
-      const hOverview = Math.max(readHeight(systems), minSeg);
-      const hSystems = Math.max(readHeight(watchlist), minSeg);
+      const rows = Array.from(railEl.querySelectorAll<HTMLElement>(RAIL_SECTION_SELECTOR)).map((segment) => {
+        const sectionId = segment.dataset.sectionId;
+        const section = sectionId ? document.getElementById(sectionId) : null;
+        return `${Math.max(readHeight(section), minSeg)}px`;
+      });
 
-      let hRadar: number;
-      let hTraffic: number;
-      if (mqWideMaps.matches && mapPanels) {
-        const total = readHeight(mapPanels);
-        hRadar = Math.max(Math.floor(total / 2), minSeg);
-        hTraffic = Math.max(total - hRadar, minSeg);
-      } else {
-        hRadar = Math.max(readHeight(radar), minSeg);
-        hTraffic = Math.max(readHeight(traffic), minSeg);
-      }
-
-      const hNews = Math.max(readHeight(news), minSeg);
-
-      railEl.style.gridTemplateRows = [
-        "2.3rem",
-        `${hOverview}px`,
-        `${hSystems}px`,
-        `${hRadar}px`,
-        `${hTraffic}px`,
-        `${hNews}px`,
-      ].join(" ");
+      railEl.style.gridTemplateRows = ["2.3rem", ...rows].join(" ");
     }
 
     function schedule() {
@@ -70,7 +46,7 @@ export function LcarsRailHeights() {
     }
 
     function getSectionElements(): HTMLElement[] {
-      const ids = ["systems", "watchlist", "map-panels", "radar", "traffic", "news"] as const;
+      const ids = ["systems", "watchlist", "bookmarks", "radar", "traffic", "news"] as const;
       const list: HTMLElement[] = [];
       for (const id of ids) {
         const el = document.getElementById(id);
@@ -94,15 +70,15 @@ export function LcarsRailHeights() {
     }
 
     window.addEventListener("resize", schedule);
+    window.addEventListener("kewldashboard:rail-order-change", schedule);
     mqDesktop.addEventListener("change", schedule);
-    mqWideMaps.addEventListener("change", schedule);
 
     return () => {
       cancelAnimationFrame(raf);
       ro.disconnect();
       window.removeEventListener("resize", schedule);
+      window.removeEventListener("kewldashboard:rail-order-change", schedule);
       mqDesktop.removeEventListener("change", schedule);
-      mqWideMaps.removeEventListener("change", schedule);
       railEl.style.removeProperty("grid-template-rows");
     };
   }, []);

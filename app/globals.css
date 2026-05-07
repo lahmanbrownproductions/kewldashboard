@@ -148,7 +148,7 @@ iframe {
   grid-column: 1;
   grid-row: 2 / -1;
   /* Fallback before LcarsRailHeights syncs; overridden inline ≥761px */
-  grid-template-rows: 2.3rem 1fr 0.9fr 1.25fr 0.8fr 1fr;
+  grid-template-rows: 2.3rem 1fr 0.9fr 0.9fr 1.25fr 0.8fr 1fr;
   gap: 0.45rem;
   width: 4.25rem;
   align-self: stretch;
@@ -156,15 +156,40 @@ iframe {
 }
 
 .rail-top-block {
+  display: grid;
+  place-items: center;
   height: 2.3rem;
   min-height: 2.3rem;
-  pointer-events: none;
   align-self: stretch;
+  margin: 0;
+  padding: 0;
+  border: 0;
   border-radius: 0 0.22rem 0.38rem 0;
   background: var(--orange);
+  color: var(--red);
   box-shadow:
     0 0 20px rgba(201, 126, 95, 0.35),
     inset 0 -1px 0 rgba(0, 0, 0, 0.2);
+}
+
+.rail-lock-toggle {
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.rail-lock-toggle:hover,
+.rail-lock-toggle:focus-visible {
+  filter: saturate(1.18) brightness(1.05);
+}
+
+.rail-lock-toggle:focus-visible {
+  outline: 3px solid var(--blue);
+  outline-offset: 4px;
+}
+
+.lcars-rail.is-rail-drag-unlocked .rail-lock-toggle {
+  background: var(--purple);
+  color: var(--ink);
 }
 
 .rail-segment {
@@ -190,19 +215,89 @@ iframe {
     box-shadow 180ms ease;
 }
 
-.rail-segment span {
+.rail-segment-link {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  margin: 0;
+  padding: 0.45rem 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  cursor: pointer;
+}
+
+.rail-segment-link span {
   writing-mode: vertical-rl;
   transform: rotate(180deg);
 }
 
-.rail-segment:hover {
+.rail-segment:hover,
+.rail-segment:has(.rail-segment-link:focus-visible) {
   filter: saturate(1.15) brightness(1.05);
   box-shadow: 0 0 26px rgba(255, 156, 72, 0.16);
 }
 
-.rail-segment:focus-visible {
+.rail-segment-link:focus-visible,
+.rail-segment-drag-handle:focus-visible {
   outline: 3px solid var(--blue);
   outline-offset: 4px;
+}
+
+.rail-segment.is-rail-drag-enabled {
+  grid-template-rows: 2.25rem minmax(0, 1fr);
+}
+
+.rail-segment.is-rail-drop-target {
+  outline: 3px dashed var(--gold);
+  outline-offset: -0.42rem;
+  box-shadow: 0 0 28px rgba(245, 201, 107, 0.28);
+}
+
+.rail-segment-drag-handle {
+  display: grid;
+  place-items: center;
+  align-self: stretch;
+  width: 100%;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-bottom: 2px solid rgba(0, 0, 0, 0.18);
+  background: rgba(0, 0, 0, 0.08);
+  color: inherit;
+  cursor: grab;
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.rail-segment-drag-handle:active {
+  cursor: grabbing;
+}
+
+.rail-drag-glyph {
+  pointer-events: none;
+  display: block;
+  width: 1rem;
+  height: 0.62rem;
+  background-color: transparent;
+  background-image:
+    linear-gradient(currentColor, currentColor),
+    linear-gradient(currentColor, currentColor),
+    linear-gradient(currentColor, currentColor);
+  background-repeat: no-repeat;
+  background-size: 100% 2px;
+  background-position:
+    center 0,
+    center 50%,
+    center 100%;
 }
 
 .rail-orange {
@@ -272,6 +367,7 @@ iframe {
 }
 
 #watchlist,
+#bookmarks,
 #news {
   border-radius: 0 1.35rem 1.35rem 0;
 }
@@ -1739,6 +1835,114 @@ h1 {
 
 .traffic-panel {
   border-color: var(--purple);
+}
+
+.bookmarks-panel {
+  padding: 0.9rem 1rem 1rem;
+}
+
+.bookmarks-form {
+  display: grid;
+  grid-template-columns: minmax(5rem, 0.8fr) minmax(9rem, 1.6fr) auto;
+  gap: 0.35rem;
+}
+
+.bookmarks-form input,
+.bookmarks-form button {
+  min-height: 1.8rem;
+  border: 0;
+  font-family: var(--font-mono), monospace;
+  font-size: 0.7rem;
+}
+
+.bookmarks-form input {
+  padding: 0.32rem 0.5rem;
+  background: var(--panel-strong);
+  color: var(--text);
+  outline: 1px solid rgba(141, 172, 214, 0.25);
+}
+
+.bookmarks-form button {
+  padding: 0.32rem 0.62rem;
+  background: var(--orange);
+  color: var(--ink);
+  font-family: var(--font-display), sans-serif;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.bookmarks-form button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.bookmarks-error {
+  margin: 0.55rem 0 0;
+  color: var(--red);
+  font-size: 0.74rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.bookmarks-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+  gap: 0.55rem;
+  margin-top: 0.7rem;
+}
+
+.bookmarks-link {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.58rem 0.68rem;
+  border-radius: 0.6rem;
+  background: var(--panel-strong);
+  outline: 1px solid rgba(141, 172, 214, 0.2);
+}
+
+.bookmarks-link:hover {
+  background: var(--lcars-row-hover-vail);
+  outline: var(--lcars-row-hover-outline);
+  box-shadow: var(--lcars-row-hover-inset);
+}
+
+.bookmarks-link a {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  min-width: 0;
+  text-decoration: none;
+}
+
+.bookmarks-link strong {
+  color: var(--gold);
+  font-family: var(--font-display), sans-serif;
+  font-size: 0.85rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.bookmarks-link small {
+  color: rgba(249, 210, 138, 0.7);
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.bookmarks-link button {
+  border: 0;
+  border-radius: 999px;
+  padding: 0.2rem 0.45rem;
+  background: rgba(141, 172, 214, 0.2);
+  color: var(--text);
+  font-size: 0.62rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  cursor: pointer;
 }
 
 .news-panel {

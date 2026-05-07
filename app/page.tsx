@@ -1,15 +1,8 @@
 import { APP_MASTHEAD_LABEL } from "@/lib/app-meta";
 import { HeroOverview } from "@/components/HeroOverview";
+import { DashboardSections } from "@/components/DashboardSections";
 import { CONTROL_PILLS } from "@/lib/dashboard-pills";
-import { LocalMapPanels } from "@/components/LocalMapPanels";
-import { ClockPanel } from "@/components/ClockPanel";
-import { MarketPanel } from "@/components/MarketPanel";
-import { WatchlistPanel } from "@/components/WatchlistPanel";
-import { WeatherPanel } from "@/components/WeatherPanel";
 import { DEFAULT_DASHBOARD_LOCATION } from "@/lib/dashboard-location";
-import { LcarsRailHeights } from "@/components/LcarsRailHeights";
-import { LcarsRailNav } from "@/components/LcarsRailNav";
-import { NewsPanel } from "@/components/NewsPanel";
 import { getWeatherReport } from "@/lib/weather";
 
 const commandBars = [
@@ -23,9 +16,6 @@ export default async function Home() {
 
   return (
     <main className="dashboard-shell">
-      <LcarsRailHeights />
-      <LcarsRailNav />
-
       <header id="overview" className="hero panel scroll-target">
         <HeroOverview controlPills={CONTROL_PILLS} />
       </header>
@@ -40,19 +30,7 @@ export default async function Home() {
           <span className="masthead-cell masthead-version-bar-right masthead-cell-2" aria-hidden="true" />
         </section>
 
-        <div className="dashboard-main">
-          <section id="systems" className="top-grid scroll-target" aria-label="Primary systems">
-            <ClockPanel />
-            <WeatherPanel initialReport={weatherReport} />
-            <MarketPanel />
-          </section>
-
-          <WatchlistPanel />
-
-          <LocalMapPanels />
-
-          <NewsPanel />
-        </div>
+        <DashboardSections initialWeatherReport={weatherReport} />
       </div>
     </main>
   );
