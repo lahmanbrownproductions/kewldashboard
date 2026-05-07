@@ -2,7 +2,7 @@
 
 import "leaflet/dist/leaflet.css";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { CircleMarker, MapContainer, Pane, TileLayer } from "react-leaflet";
+import { CircleMarker, MapContainer, Pane, TileLayer, ZoomControl } from "react-leaflet";
 
 import { MapResizeFix } from "@/components/maps/MapResizeFix";
 import { MapViewUpdater } from "@/components/maps/MapViewUpdater";
@@ -23,11 +23,8 @@ import {
 
 import "./dashboard-leaflet-map.css";
 
-/** Leaflet supports this on `L.Map`; react-leaflet's `MapContainerProps` typings omit `zoomControlOptions`. */
-const MAP_ZOOM_BOTTOM_RIGHT = {
-  zoomControl: true,
-  zoomControlOptions: { position: "bottomright" as const },
-} as const;
+/** Leaflet's built-in map zoom ignores `zoomControlOptions`; use `ZoomControl` with `position` instead. */
+const MAP_NO_DEFAULT_ZOOM = { zoomControl: false } as const;
 
 export type DashboardLeafletMapVariant = "radar" | "traffic";
 
@@ -45,6 +42,23 @@ function clampZoom(zoom: number, max: number) {
   return Math.min(Math.max(zoom, 2), max);
 }
 
+function buildGoogleDirectionsUrl(origin: string, destination: string): string | null {
+  const dest = destination.trim();
+  if (!dest) return null;
+  const params = new URLSearchParams({ api: "1", destination: dest, travelmode: "driving" });
+  const from = origin.trim();
+  if (from) params.set("origin", from);
+  return `https://www.google.com/maps/dir/?${params.toString()}`;
+}
+
+function buildWazeDirectionsUrl(origin: string, destination: string): string | null {
+  const dest = destination.trim();
+  if (!dest) return null;
+  const from = origin.trim();
+  const q = from ? `${from} to ${dest}` : dest;
+  return `https://waze.com/ul?q=${encodeURIComponent(q)}&navigate=yes`;
+}
+
 function TrafficDashboardLeafletMap({ center, zoom, areaLabel }: Omit<DashboardLeafletMapProps, "variant">) {
   const lat = center[0];
   const lng = center[1];
@@ -54,46 +68,74 @@ function TrafficDashboardLeafletMap({ center, zoom, areaLabel }: Omit<DashboardL
   const requestedZoom = zoom ?? defaultZoom;
   const maxUiZoom = 18;
   const viewZoom = clampZoom(requestedZoom, maxUiZoom);
-  const relayZoom = Math.min(18, Math.max(10, Math.round(viewZoom)));
 
-  const wazeUrl = `https://waze.com/ul?ll=${lat},${lng}&zoom=${relayZoom}&navigate=yes`;
-  const googleMapsTrafficUrl = `https://www.google.com/maps/@${lat},${lng},${relayZoom}z/data=!5m1!1e1`;
+  const [navFrom, setNavFrom] = useState(() => areaLabel);
+  const [navTo, setNavTo] = useState("");
+
+  useEffect(() => {
+    setNavFrom(areaLabel);
+  }, [areaLabel]);
+
+  const googleDirectionsUrl = useMemo(() => buildGoogleDirectionsUrl(navFrom, navTo), [navFrom, navTo]);
+  const wazeDirectionsUrl = useMemo(() => buildWazeDirectionsUrl(navFrom, navTo), [navFrom, navTo]);
+  const canNavigate = Boolean(googleDirectionsUrl && wazeDirectionsUrl);
 
   return (
     <div className="leaflet-map-shell" aria-label={`Map near ${areaLabel}`}>
-      <div className="map-overlay-toolbar" role="toolbar" aria-label="Helm relays">
-        <a
-          className="map-layer-toggle map-layer-toggle--link is-on"
-          href={wazeUrl}
-          target="_blank"
-          rel="noreferrer noopener"
-          title="Open Waze (helm relay)"
-        >
-          Waze
-        </a>
-        <a
-          className="map-layer-toggle map-layer-toggle--link is-on"
-          href={googleMapsTrafficUrl}
-          target="_blank"
-          rel="noreferrer noopener"
-          title="Open Maps with traffic layer"
-        >
-          Maps
-        </a>
-      </div>
-
-      <div className="map-helm-advisory-overlay" aria-live="polite">
-        <div className="map-helm-advisory-panel map-helm-advisory-panel--traffic">
-          <p className="map-helm-advisory-eyebrow">Mission ops · channel limitation</p>
-          <p className="map-helm-advisory-title">Live traffic not on main viewer</p>
-          <p className="map-helm-advisory-copy">
-            Shipboard LCARS resolves cartography only — congestion telemetry is not mirrored aboard this
-            terminal. Establish an&nbsp;
-            <span className="map-helm-advisory-em">off-ship navigation relay</span> via the helm shortcuts
-            above.
-          </p>
+      <form className="map-traffic-nav" aria-label="Navigation" onSubmit={(e) => e.preventDefault()}>
+        <div className="map-traffic-nav-fields">
+          <label className="map-traffic-nav-field">
+            <span className="map-traffic-nav-label">From</span>
+            <input
+              type="text"
+              value={navFrom}
+              onChange={(e) => setNavFrom(e.target.value)}
+              placeholder="Starting place"
+              maxLength={160}
+              autoComplete="address-line1"
+            />
+          </label>
+          <label className="map-traffic-nav-field">
+            <span className="map-traffic-nav-label">To</span>
+            <input
+              type="text"
+              value={navTo}
+              onChange={(e) => setNavTo(e.target.value)}
+              placeholder="Destination"
+              maxLength={160}
+              autoComplete="address-line1"
+            />
+          </label>
         </div>
-      </div>
+        <div className="map-traffic-nav-actions" role="group" aria-label="Open route in">
+          <a
+            className={`map-layer-toggle map-layer-toggle--link${canNavigate ? " is-on" : ""}`}
+            href={wazeDirectionsUrl ?? "#"}
+            target="_blank"
+            rel="noreferrer noopener"
+            tabIndex={canNavigate ? undefined : -1}
+            aria-disabled={!canNavigate}
+            onClick={(e) => {
+              if (!canNavigate) e.preventDefault();
+            }}
+          >
+            Waze
+          </a>
+          <a
+            className={`map-layer-toggle map-layer-toggle--link${canNavigate ? " is-on" : ""}`}
+            href={googleDirectionsUrl ?? "#"}
+            target="_blank"
+            rel="noreferrer noopener"
+            tabIndex={canNavigate ? undefined : -1}
+            aria-disabled={!canNavigate}
+            onClick={(e) => {
+              if (!canNavigate) e.preventDefault();
+            }}
+          >
+            Maps
+          </a>
+        </div>
+      </form>
 
       <MapContainer
         center={stationCenter}
@@ -102,8 +144,9 @@ function TrafficDashboardLeafletMap({ center, zoom, areaLabel }: Omit<DashboardL
         minZoom={2}
         className="dashboard-leaflet-map"
         scrollWheelZoom
-        {...MAP_ZOOM_BOTTOM_RIGHT}
+        {...MAP_NO_DEFAULT_ZOOM}
       >
+        <ZoomControl position="bottomright" />
         <TileLayer
           url={CARTO_DARK_TILE_URL}
           attribution={CARTO_DARK_ATTRIBUTION}
@@ -147,7 +190,6 @@ function RadarDashboardLeafletMap({ center, zoom, areaLabel }: Omit<DashboardLea
   const openWeatherKey = useMemo(() => getOpenWeatherMapApiKey(), []);
 
   const [rainMaps, setRainMaps] = useState<Awaited<ReturnType<typeof fetchRainViewerMaps>>>(null);
-  const [rainFetchFailed, setRainFetchFailed] = useState(false);
   const [showRadar, setShowRadar] = useState(true);
   const [showCoverage, setShowCoverage] = useState(false);
   const [showPrecip, setShowPrecip] = useState(false);
@@ -157,9 +199,6 @@ function RadarDashboardLeafletMap({ center, zoom, areaLabel }: Omit<DashboardLea
     const maps = await fetchRainViewerMaps();
     if (maps) {
       setRainMaps(maps);
-      setRainFetchFailed(false);
-    } else {
-      setRainFetchFailed(true);
     }
   }, []);
 
@@ -271,25 +310,6 @@ function RadarDashboardLeafletMap({ center, zoom, areaLabel }: Omit<DashboardLea
         </a>
       </div>
 
-      {rainFetchFailed && radarUnavailable ? (
-        <div className="map-leaflet-banner" role="status">
-          Radar metadata unavailable — enable relays (Windy / NWS) for full sweep.
-        </div>
-      ) : null}
-
-      <div className="map-helm-advisory-overlay" aria-live="polite">
-        <div className="map-helm-advisory-panel map-helm-advisory-panel--radar">
-          <p className="map-helm-advisory-eyebrow">Science division · atmospheric relay</p>
-          <p className="map-helm-advisory-title">Hybrid meteorological display</p>
-          <p className="map-helm-advisory-copy">
-            Composite radar (RainViewer) and optional precip/cloud tiles stream aboard when available.
-            Lightning meshes, NWS warning polygons, mesoscale modeling, and ensemble forecasts are not fully
-            mirrored here — establish a&nbsp;
-            <span className="map-helm-advisory-em">meteorological relay</span> via Windy or NWS above.
-          </p>
-        </div>
-      </div>
-
       <MapContainer
         center={stationCenter}
         zoom={viewZoom}
@@ -297,8 +317,9 @@ function RadarDashboardLeafletMap({ center, zoom, areaLabel }: Omit<DashboardLea
         minZoom={2}
         className="dashboard-leaflet-map"
         scrollWheelZoom
-        {...MAP_ZOOM_BOTTOM_RIGHT}
+        {...MAP_NO_DEFAULT_ZOOM}
       >
+        <ZoomControl position="bottomright" />
         <TileLayer
           url={CARTO_DARK_TILE_URL}
           attribution={CARTO_DARK_ATTRIBUTION}

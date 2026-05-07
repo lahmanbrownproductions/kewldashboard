@@ -9,7 +9,7 @@
   --peach: #f2a13a;
   --gold: #f5c96b;
   --purple: #b77aa0;
-  --links: #9a9aff;
+  --links: rgba(154, 154, 255, 1);
   --blue: #8dacd6;
   --red: #d54d12;
   --ink: #090909;
@@ -35,7 +35,7 @@
   --peach: #c98828;
   --gold: #d4a852;
   --purple: #956488;
-  --links: #8a8aee;
+  --links: rgba(138, 138, 238, 1);
   --blue: #7294ba;
   --red: #b8430f;
   --ink: #020203;
@@ -698,7 +698,7 @@ h1 {
 }
 
 .control-pill--gold {
-  background: var(--gold);
+  background: var(--links);
 }
 
 .control-pill--blue {
@@ -1821,12 +1821,9 @@ h1 {
 }
 
 .map-frame-leaflet {
-  min-height: 12rem;
+  /* min-height: 0 so grid row (minmax(0, 1fr)) can constrain height; large min-heights overflow the panel border */
+  min-height: 0;
   overflow: hidden;
-}
-
-#traffic .map-frame-leaflet {
-  min-height: clamp(14rem, 38vw, 28rem);
 }
 
 .map-frame-loading {
