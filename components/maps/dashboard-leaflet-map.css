@@ -112,6 +112,7 @@
   text-decoration: none;
   display: inline-flex;
   align-items: center;
+  border-radius: 0 25px 25px 0;
 }
 
 .map-leaflet-status {
