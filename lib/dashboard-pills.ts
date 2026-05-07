@@ -1,5 +1,3 @@
-import { APP_MASTHEAD_LABEL } from "@/lib/app-meta";
-
 /** Aligns with panel border accents & rail segments (#systems overview orange, radar peach, etc.). */
 export type PillAccent = "gold" | "blue" | "peach" | "purple" | "orange";
 
@@ -20,7 +18,6 @@ export const CONTROL_PILLS: ControlPill[] = [
   { label: "Weather Radar", targetId: "radar", accent: "peach" },
   { label: "Traffic", targetId: "traffic", accent: "purple" },
   { label: "Subspace Feed", targetId: "news", accent: "blue" },
-  { label: APP_MASTHEAD_LABEL, targetId: "lcars", accent: "orange" },
 ];
 
 const FLASH_CLASS = "panel-focus-flash";
