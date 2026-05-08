@@ -3,18 +3,26 @@
 import type { DragEvent } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
+import { RAIL_DRAG_INDEX_MIME, RAIL_DRAG_SECTION_ID_MIME } from "@/lib/dashboard-dnd";
 import { scrollToDashboardTarget } from "@/lib/dashboard-pills";
 import { DASHBOARD_SECTION_DEFS, type DashboardSectionId } from "@/lib/dashboard-sections";
 
-const DRAG_MIME = "application/x-kewldashboard-rail-index";
-
 type LcarsRailNavProps = {
   order: DashboardSectionId[];
-  onOrderChange: (nextOrder: DashboardSectionId[]) => void;
+  /** Move section from flat-index `from` to flat-index `to` (same semantics as native splice reorder). */
+  onRailReorder: (fromIndex: number, toIndex: number) => void;
+  dragUnlocked: boolean;
+  onDragUnlockedChange: (unlocked: boolean) => void;
+  onRailDragEnd?: () => void;
 };
 
-export function LcarsRailNav({ order, onOrderChange }: LcarsRailNavProps) {
-  const [dragEnabled, setDragEnabled] = useState(false);
+export function LcarsRailNav({
+  order,
+  onRailReorder,
+  dragUnlocked,
+  onDragUnlockedChange,
+  onRailDragEnd,
+}: LcarsRailNavProps) {
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
   const dragFromHandleRef = useRef(false);
 
@@ -46,36 +54,42 @@ export function LcarsRailNav({ order, onOrderChange }: LcarsRailNavProps) {
       return;
     }
 
-    const next = [...order];
-    const [moved] = next.splice(fromIndex, 1);
-    next.splice(toIndex, 0, moved);
-    onOrderChange(next);
+    onRailReorder(fromIndex, toIndex);
   }
 
   function parseDraggedIndex(dataTransfer: DataTransfer): number | null {
-    const raw = dataTransfer.getData(DRAG_MIME) || dataTransfer.getData("text/plain");
+    const raw =
+      dataTransfer.getData(RAIL_DRAG_INDEX_MIME) || dataTransfer.getData("text/plain");
     const index = Number.parseInt(raw, 10);
     return Number.isFinite(index) ? index : null;
   }
 
   function onRailDragStart(event: DragEvent<HTMLElement>, index: number) {
-    if (!dragEnabled || !dragFromHandleRef.current) {
+    if (!dragUnlocked || !dragFromHandleRef.current) {
+      event.preventDefault();
+      return;
+    }
+
+    const sectionId = order[index];
+    if (!sectionId) {
       event.preventDefault();
       return;
     }
 
     event.dataTransfer.effectAllowed = "move";
-    event.dataTransfer.setData(DRAG_MIME, String(index));
+    event.dataTransfer.setData(RAIL_DRAG_INDEX_MIME, String(index));
     event.dataTransfer.setData("text/plain", String(index));
+    event.dataTransfer.setData(RAIL_DRAG_SECTION_ID_MIME, sectionId);
   }
 
-  function onRailDragEnd() {
+  function onRailDragEnded() {
     dragFromHandleRef.current = false;
     setDragOverIndex(null);
+    onRailDragEnd?.();
   }
 
   function onRailDragOver(event: DragEvent<HTMLElement>, index: number) {
-    if (!dragEnabled) {
+    if (!dragUnlocked) {
       return;
     }
     event.preventDefault();
@@ -90,7 +104,7 @@ export function LcarsRailNav({ order, onOrderChange }: LcarsRailNavProps) {
   }
 
   function onRailDrop(event: DragEvent<HTMLElement>, dropIndex: number) {
-    if (!dragEnabled) {
+    if (!dragUnlocked) {
       return;
     }
     event.preventDefault();
@@ -103,14 +117,16 @@ export function LcarsRailNav({ order, onOrderChange }: LcarsRailNavProps) {
   }
 
   return (
-    <nav className={`lcars-rail${dragEnabled ? " is-rail-drag-unlocked" : ""}`} aria-label="Dashboard sections">
+    <nav className={`lcars-rail${dragUnlocked ? " is-rail-drag-unlocked" : ""}`} aria-label="Dashboard sections">
       <button
         type="button"
         className="rail-top-block rail-lock-toggle"
-        aria-pressed={dragEnabled}
-        aria-label={dragEnabled ? "Lock sidebar section order" : "Unlock sidebar section drag ordering"}
-        title={dragEnabled ? "Lock sidebar order" : "Unlock drag ordering"}
-        onClick={() => setDragEnabled((enabled) => !enabled)}
+        aria-pressed={dragUnlocked}
+        aria-label={
+          dragUnlocked ? "Lock sidebar section order" : "Unlock sidebar section drag ordering"
+        }
+        title={dragUnlocked ? "Lock sidebar order" : "Unlock drag ordering"}
+        onClick={() => onDragUnlockedChange(!dragUnlocked)}
       >
         <span aria-hidden="true" className="rail-drag-glyph" />
       </button>
@@ -118,18 +134,18 @@ export function LcarsRailNav({ order, onOrderChange }: LcarsRailNavProps) {
         return (
           <div
             key={item.id}
-            className={`${item.className}${dragEnabled ? " is-rail-drag-enabled" : ""}${
+            className={`${item.className}${dragUnlocked ? " is-rail-drag-enabled" : ""}${
               dragOverIndex === index ? " is-rail-drop-target" : ""
             }`}
             data-section-id={item.id}
-            draggable={dragEnabled}
+            draggable={dragUnlocked}
             onDragStart={(event) => onRailDragStart(event, index)}
-            onDragEnd={onRailDragEnd}
+            onDragEnd={onRailDragEnded}
             onDragOver={(event) => onRailDragOver(event, index)}
             onDragLeave={onRailDragLeave}
             onDrop={(event) => onRailDrop(event, index)}
           >
-            {dragEnabled ? (
+            {dragUnlocked ? (
               <button
                 type="button"
                 className="rail-segment-drag-handle"

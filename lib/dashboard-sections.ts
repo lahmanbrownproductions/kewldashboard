@@ -3,7 +3,7 @@ export const DASHBOARD_SECTION_DEFS = [
   { id: "watchlist", label: "Systems", className: "rail-segment rail-gold" },
   { id: "bookmarks", label: "Links", className: "rail-segment rail-links" },
   { id: "radar", label: "Radar", className: "rail-segment rail-peach" },
-  { id: "traffic", label: "Traffic", className: "rail-segment rail-purple" },
+  { id: "traffic", label: "Navigation", className: "rail-segment rail-purple" },
   { id: "news", label: "News", className: "rail-segment rail-blue" },
 ] as const;
 

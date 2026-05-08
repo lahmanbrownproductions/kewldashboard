@@ -12,6 +12,18 @@ function readHeight(el: Element | null): number {
   return Math.round(el.getBoundingClientRect().height);
 }
 
+/** Row grid item that stretches with multi-column rows; inner #id may be shorter than the shared row. */
+function getRailHeightAnchor(sectionId: string | undefined): HTMLElement | null {
+  if (!sectionId) {
+    return null;
+  }
+  const inner = document.getElementById(sectionId);
+  if (!inner) {
+    return null;
+  }
+  return inner.closest(".dashboard-layout-cell") ?? inner;
+}
+
 export function LcarsRailHeights() {
   useEffect(() => {
     const rail = document.querySelector<HTMLElement>(RAIL_SELECTOR);
@@ -33,8 +45,8 @@ export function LcarsRailHeights() {
       const minSeg = 52;
       const rows = Array.from(railEl.querySelectorAll<HTMLElement>(RAIL_SECTION_SELECTOR)).map((segment) => {
         const sectionId = segment.dataset.sectionId;
-        const section = sectionId ? document.getElementById(sectionId) : null;
-        return `${Math.max(readHeight(section), minSeg)}px`;
+        const anchor = getRailHeightAnchor(sectionId ?? undefined);
+        return `${Math.max(readHeight(anchor), minSeg)}px`;
       });
 
       railEl.style.gridTemplateRows = ["2.3rem", ...rows].join(" ");
@@ -45,30 +57,35 @@ export function LcarsRailHeights() {
       raf = requestAnimationFrame(apply);
     }
 
-    function getSectionElements(): HTMLElement[] {
+    function getResizeObservedElements(): HTMLElement[] {
       const ids = ["systems", "watchlist", "bookmarks", "radar", "traffic", "news"] as const;
-      const list: HTMLElement[] = [];
+      const anchors = new Set<HTMLElement>();
+
       for (const id of ids) {
-        const el = document.getElementById(id);
-        if (el) {
-          list.push(el);
+        const anchor = getRailHeightAnchor(id);
+        if (anchor) {
+          anchors.add(anchor);
         }
       }
-      return list;
+
+      for (const row of document.querySelectorAll(".dashboard-layout-row")) {
+        anchors.add(row as HTMLElement);
+      }
+
+      const main = document.querySelector(".dashboard-main");
+      if (main) {
+        anchors.add(main as HTMLElement);
+      }
+
+      return [...anchors];
     }
 
     apply();
 
     const ro = new ResizeObserver(schedule);
-    for (const el of getSectionElements()) {
+    for (const el of getResizeObservedElements()) {
       ro.observe(el);
     }
-
-    const main = document.querySelector(".dashboard-main");
-    if (main) {
-      ro.observe(main);
-    }
-
     window.addEventListener("resize", schedule);
     window.addEventListener("kewldashboard:rail-order-change", schedule);
     mqDesktop.addEventListener("change", schedule);

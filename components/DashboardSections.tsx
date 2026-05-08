@@ -25,6 +25,22 @@ type DashboardSectionsProps = {
 
 export function DashboardSections({ initialWeatherReport }: DashboardSectionsProps) {
   const [sectionOrder, setSectionOrder] = useState<DashboardSectionId[]>(() => [...DEFAULT_DASHBOARD_SECTION_ORDER]);
+  const [railDragUnlocked, setRailDragUnlocked] = useState(false);
+
+  function onRailReorder(fromIndex: number, toIndex: number) {
+    setSectionOrder((items) => {
+      if (fromIndex === toIndex || fromIndex < 0 || toIndex < 0) {
+        return items;
+      }
+      if (fromIndex >= items.length || toIndex >= items.length) {
+        return items;
+      }
+      const next = [...items];
+      const [moved] = next.splice(fromIndex, 1);
+      next.splice(toIndex, 0, moved);
+      return next;
+    });
+  }
 
   useEffect(() => {
     const oldRailOrder = window.localStorage.getItem("kewldashboard.railOrder.v1");
@@ -57,7 +73,7 @@ export function DashboardSections({ initialWeatherReport }: DashboardSectionsPro
       case "radar":
         return <LocalMapPanel key={`radar:${mapRemountKey}`} variant="radar" />;
       case "traffic":
-        return <LocalMapPanel key={`traffic:${mapRemountKey}`} variant="traffic" />;
+        return <LocalMapPanel key={`traffic:${mapRemountKey}`} variant="navigation" />;
       case "news":
         return <NewsPanel key={sectionId} />;
     }
@@ -66,7 +82,12 @@ export function DashboardSections({ initialWeatherReport }: DashboardSectionsPro
   return (
     <>
       <LcarsRailHeights />
-      <LcarsRailNav order={sectionOrder} onOrderChange={setSectionOrder} />
+      <LcarsRailNav
+        order={sectionOrder}
+        onRailReorder={onRailReorder}
+        dragUnlocked={railDragUnlocked}
+        onDragUnlockedChange={setRailDragUnlocked}
+      />
       <div className="dashboard-main">{sectionOrder.map(renderSection)}</div>
     </>
   );

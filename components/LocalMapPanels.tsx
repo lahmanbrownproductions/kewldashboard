@@ -6,7 +6,7 @@ import { useMemo } from "react";
 import { useDashboardLocation } from "@/components/dashboard-location-context";
 
 type LocalMapPanelProps = {
-  variant: "radar" | "traffic";
+  variant: "radar" | "navigation";
 };
 
 const DashboardLeafletMap = dynamic(
@@ -35,11 +35,11 @@ export function LocalMapPanel({ variant }: LocalMapPanelProps) {
 
   return (
     <article
-      id={variant}
-      className={`panel map-panel ${isRadar ? "radar-panel" : "traffic-panel"} scroll-target`}
+      id={isRadar ? variant : "traffic"}
+      className={`panel map-panel ${isRadar ? "radar-panel" : "navigation-panel"} scroll-target`}
     >
       <div className="panel-heading">
-        <span>{isRadar ? "Weather Radar" : "Traffic"}</span>
+        <span>{isRadar ? "Weather Radar" : "Navigation"}</span>
         <strong className="map-panel-attribution">
           {isRadar ? (
             <>
@@ -53,7 +53,7 @@ export function LocalMapPanel({ variant }: LocalMapPanelProps) {
               {" - "}Optional OpenWeather overlays - meteorological relays - centered on your station
             </>
           ) : (
-            "Tactical chart - helm relays for live congestion - centered on your station"
+            "Saved routes open in Google Maps — wheelhouse chart centered on your station"
           )}
         </strong>
       </div>
@@ -68,7 +68,7 @@ export function LocalMapPanels() {
   return (
     <section id="map-panels" className="mission-grid scroll-target" aria-label="Operational panels">
       <LocalMapPanel variant="radar" />
-      <LocalMapPanel variant="traffic" />
+      <LocalMapPanel variant="navigation" />
     </section>
   );
 }

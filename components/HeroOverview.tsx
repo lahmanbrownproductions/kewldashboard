@@ -133,7 +133,7 @@ export function HeroOverview({ controlPills }: HeroOverviewProps) {
           </div>
           <div>
             <span>Sources</span>
-            <strong>Weather / Traffic / Markets</strong>
+            <strong>Weather / Navigation / Markets</strong>
           </div>
         </div>
       </div>

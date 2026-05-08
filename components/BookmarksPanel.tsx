@@ -17,6 +17,7 @@ import {
   useSortable,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import type { ButtonHTMLAttributes, CSSProperties } from "react";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 
 type Bookmark = {
@@ -82,7 +83,7 @@ function parseStoredBookmarks(raw: string): Bookmark[] | null {
   }
 }
 
-type SortableBookmarkRowProps = {
+type BookmarkRowProps = {
   bookmark: Bookmark;
   isEditing: boolean;
   editLabel: string;
@@ -93,9 +94,14 @@ type SortableBookmarkRowProps = {
   onSaveEdit: () => void;
   onCancelEdit: () => void;
   onRemove: () => void;
+  outerRef?: (node: HTMLElement | null) => void;
+  outerStyle?: CSSProperties;
+  isDragging?: boolean;
+  dragHandleProps?: ButtonHTMLAttributes<HTMLButtonElement>;
+  dragDisabled?: boolean;
 };
 
-function SortableBookmarkRow({
+function BookmarkRow({
   bookmark,
   isEditing,
   editLabel,
@@ -106,36 +112,28 @@ function SortableBookmarkRow({
   onSaveEdit,
   onCancelEdit,
   onRemove,
-}: SortableBookmarkRowProps) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
-    id: bookmark.id,
-    disabled: isEditing,
-  });
-
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    opacity: isDragging ? 0.92 : undefined,
-    zIndex: isDragging ? 2 : undefined,
-  };
-
+  outerRef,
+  outerStyle,
+  isDragging = false,
+  dragHandleProps,
+  dragDisabled = false,
+}: BookmarkRowProps) {
   return (
     <article
-      ref={setNodeRef}
-      style={style}
+      ref={outerRef}
+      style={outerStyle}
       className={`bookmarks-link${isEditing ? " bookmarks-link--editing" : ""}`}
       role="listitem"
       data-dragging={isDragging ? "true" : undefined}
     >
       <button
         type="button"
-        className="bookmarks-drag-handle"
+        className="watchlist-drag-handle"
         aria-label={`Drag to reorder ${bookmark.label}`}
-        disabled={isEditing}
-        {...attributes}
-        {...listeners}
+        disabled={dragDisabled || isEditing}
+        {...dragHandleProps}
       >
-        <span aria-hidden="true">⋮⋮</span>
+        <span aria-hidden="true" className="watchlist-drag-glyph" />
       </button>
 
       <div className="bookmarks-link-body">
@@ -197,7 +195,34 @@ function SortableBookmarkRow({
   );
 }
 
+function SortableBookmarkRow(props: Omit<BookmarkRowProps, "outerRef" | "outerStyle" | "isDragging" | "dragHandleProps" | "dragDisabled">) {
+  const { bookmark, isEditing } = props;
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: bookmark.id,
+    disabled: isEditing,
+  });
+
+  const outerStyle = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.92 : undefined,
+    zIndex: isDragging ? 2 : undefined,
+  };
+
+  return (
+    <BookmarkRow
+      {...props}
+      outerRef={setNodeRef}
+      outerStyle={outerStyle}
+      isDragging={isDragging}
+      dragDisabled={false}
+      dragHandleProps={{ ...attributes, ...listeners }}
+    />
+  );
+}
+
 export function BookmarksPanel() {
+  const [dragReady, setDragReady] = useState(false);
   const [bookmarks, setBookmarks] = useState<Bookmark[]>(DEFAULT_BOOKMARKS);
   const [labelInput, setLabelInput] = useState("");
   const [urlInput, setUrlInput] = useState("");
@@ -226,6 +251,10 @@ export function BookmarksPanel() {
     if (restored.length > 0) {
       setBookmarks(restored);
     }
+  }, []);
+
+  useEffect(() => {
+    setDragReady(true);
   }, []);
 
   useEffect(() => {
@@ -383,27 +412,48 @@ export function BookmarksPanel() {
 
       {error ? <p className="bookmarks-error">{error}</p> : null}
 
-      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-        <SortableContext items={bookmarks.map((bookmark) => bookmark.id)} strategy={rectSortingStrategy}>
-          <div className="bookmarks-grid" role="list" aria-label="Saved bookmarks">
-            {bookmarks.map((bookmark) => (
-              <SortableBookmarkRow
-                key={bookmark.id}
-                bookmark={bookmark}
-                isEditing={editingId === bookmark.id}
-                editLabel={editingId === bookmark.id ? editLabel : ""}
-                editHref={editingId === bookmark.id ? editHref : ""}
-                onEditLabel={setEditLabel}
-                onEditHref={setEditHref}
-                onStartEdit={() => startEdit(bookmark)}
-                onSaveEdit={saveEdit}
-                onCancelEdit={cancelEdit}
-                onRemove={() => removeBookmark(bookmark.id)}
-              />
-            ))}
-          </div>
-        </SortableContext>
-      </DndContext>
+      {dragReady ? (
+        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+          <SortableContext items={bookmarks.map((bookmark) => bookmark.id)} strategy={rectSortingStrategy}>
+            <div className="bookmarks-grid" role="list" aria-label="Saved bookmarks">
+              {bookmarks.map((bookmark) => (
+                <SortableBookmarkRow
+                  key={bookmark.id}
+                  bookmark={bookmark}
+                  isEditing={editingId === bookmark.id}
+                  editLabel={editingId === bookmark.id ? editLabel : ""}
+                  editHref={editingId === bookmark.id ? editHref : ""}
+                  onEditLabel={setEditLabel}
+                  onEditHref={setEditHref}
+                  onStartEdit={() => startEdit(bookmark)}
+                  onSaveEdit={saveEdit}
+                  onCancelEdit={cancelEdit}
+                  onRemove={() => removeBookmark(bookmark.id)}
+                />
+              ))}
+            </div>
+          </SortableContext>
+        </DndContext>
+      ) : (
+        <div className="bookmarks-grid" role="list" aria-label="Saved bookmarks">
+          {bookmarks.map((bookmark) => (
+            <BookmarkRow
+              key={bookmark.id}
+              bookmark={bookmark}
+              isEditing={editingId === bookmark.id}
+              editLabel={editingId === bookmark.id ? editLabel : ""}
+              editHref={editingId === bookmark.id ? editHref : ""}
+              onEditLabel={setEditLabel}
+              onEditHref={setEditHref}
+              onStartEdit={() => startEdit(bookmark)}
+              onSaveEdit={saveEdit}
+              onCancelEdit={cancelEdit}
+              onRemove={() => removeBookmark(bookmark.id)}
+              dragDisabled
+            />
+          ))}
+        </div>
+      )}
     </section>
   );
 }

@@ -62,7 +62,7 @@ export function parseDashboardLocation(raw: string | null): DashboardLocation | 
 }
 
 export function formatLocationTagline(label: string) {
-  return `${label} command view for weather, traffic, markets, and headlines.`;
+  return `${label} command view for weather, navigation, markets, and headlines.`;
 }
 
 /** Short zone label for UI (e.g. `America/Chicago` → `CT`). Uses `shortGeneric` when supported. */

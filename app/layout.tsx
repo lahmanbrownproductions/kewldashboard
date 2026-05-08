@@ -19,7 +19,7 @@ const shareTechMono = Share_Tech_Mono({
 
 export const metadata: Metadata = {
   title: "Kewl Dashboard",
-  description: "An LCARS-inspired command dashboard for your location's weather, traffic, markets, and news.",
+  description: "An LCARS-inspired command dashboard for your location's weather, navigation, markets, and news.",
 };
 
 export default function RootLayout({

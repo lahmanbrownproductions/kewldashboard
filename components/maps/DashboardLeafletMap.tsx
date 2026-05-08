@@ -1,7 +1,7 @@
 "use client";
 
 import "leaflet/dist/leaflet.css";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
 import { CircleMarker, MapContainer, Pane, TileLayer, ZoomControl } from "react-leaflet";
 
 import { MapResizeFix } from "@/components/maps/MapResizeFix";
@@ -20,13 +20,21 @@ import {
   getLatestRadarFrame,
   radarTileUrlTemplate,
 } from "@/lib/maps/rainviewer";
+import {
+  MAX_NAVIGATION_ROUTES,
+  NAVIGATION_ROUTES_STORAGE_KEY,
+  newNavigationRouteId,
+  parseNavigationRoutes,
+  sanitizeRouteField,
+  type NavigationRoute,
+} from "@/lib/navigation-routes";
 
 import "./dashboard-leaflet-map.css";
 
 /** Leaflet's built-in map zoom ignores `zoomControlOptions`; use `ZoomControl` with `position` instead. */
 const MAP_NO_DEFAULT_ZOOM = { zoomControl: false } as const;
 
-export type DashboardLeafletMapVariant = "radar" | "traffic";
+export type DashboardLeafletMapVariant = "radar" | "navigation";
 
 export type DashboardLeafletMapProps = {
   center: [number, number];
@@ -51,15 +59,7 @@ function buildGoogleDirectionsUrl(origin: string, destination: string): string |
   return `https://www.google.com/maps/dir/?${params.toString()}`;
 }
 
-function buildWazeDirectionsUrl(origin: string, destination: string): string | null {
-  const dest = destination.trim();
-  if (!dest) return null;
-  const from = origin.trim();
-  const q = from ? `${from} to ${dest}` : dest;
-  return `https://waze.com/ul?q=${encodeURIComponent(q)}&navigate=yes`;
-}
-
-function TrafficDashboardLeafletMap({ center, zoom, areaLabel }: Omit<DashboardLeafletMapProps, "variant">) {
+function NavigationDashboardLeafletMap({ center, zoom, areaLabel }: Omit<DashboardLeafletMapProps, "variant">) {
   const lat = center[0];
   const lng = center[1];
   const stationCenter: [number, number] = [lat, lng];
@@ -69,73 +69,194 @@ function TrafficDashboardLeafletMap({ center, zoom, areaLabel }: Omit<DashboardL
   const maxUiZoom = 18;
   const viewZoom = clampZoom(requestedZoom, maxUiZoom);
 
-  const [navFrom, setNavFrom] = useState(() => areaLabel);
-  const [navTo, setNavTo] = useState("");
+  const [routes, setRoutes] = useState<NavigationRoute[]>(() =>
+    parseNavigationRoutes(
+      typeof window !== "undefined" ? window.localStorage.getItem(NAVIGATION_ROUTES_STORAGE_KEY) : null,
+    ),
+  );
+  const [draftFrom, setDraftFrom] = useState(areaLabel);
+  const [draftTo, setDraftTo] = useState("");
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editFrom, setEditFrom] = useState("");
+  const [editTo, setEditTo] = useState("");
 
   useEffect(() => {
-    setNavFrom(areaLabel);
+    setDraftFrom((prev) => (prev.trim() === "" ? areaLabel : prev));
   }, [areaLabel]);
 
-  const googleDirectionsUrl = useMemo(() => buildGoogleDirectionsUrl(navFrom, navTo), [navFrom, navTo]);
-  const wazeDirectionsUrl = useMemo(() => buildWazeDirectionsUrl(navFrom, navTo), [navFrom, navTo]);
-  const canNavigate = Boolean(googleDirectionsUrl && wazeDirectionsUrl);
+  useEffect(() => {
+    window.localStorage.setItem(NAVIGATION_ROUTES_STORAGE_KEY, JSON.stringify(routes));
+  }, [routes]);
+
+  const updateRoute = (id: string, from: string, to: string) => {
+    const f = sanitizeRouteField(from);
+    const t = sanitizeRouteField(to);
+    if (!t) {
+      return;
+    }
+    setRoutes((prev) =>
+      prev.map((r) => (r.id === id ? { ...r, from: f, to: t } : r)),
+    );
+    setEditingId(null);
+  };
+
+  const removeRoute = (id: string) => {
+    setRoutes((prev) => prev.filter((r) => r.id !== id));
+    setEditingId((cur) => (cur === id ? null : cur));
+  };
+
+  const addRoute = (e?: FormEvent) => {
+    e?.preventDefault();
+    const f = sanitizeRouteField(draftFrom);
+    const t = sanitizeRouteField(draftTo);
+    if (!t) {
+      return;
+    }
+    setRoutes((prev) =>
+      [...prev, { id: newNavigationRouteId(), from: f, to: t }].slice(0, MAX_NAVIGATION_ROUTES),
+    );
+    setDraftTo("");
+  };
+
+  const beginEdit = (route: NavigationRoute) => {
+    setEditingId(route.id);
+    setEditFrom(route.from);
+    setEditTo(route.to);
+  };
+
+  const cancelEdit = () => {
+    setEditingId(null);
+    setEditFrom("");
+    setEditTo("");
+  };
 
   return (
     <div className="leaflet-map-shell" aria-label={`Map near ${areaLabel}`}>
-      <form className="map-traffic-nav" aria-label="Navigation" onSubmit={(e) => e.preventDefault()}>
-        <div className="map-traffic-nav-fields">
-          <label className="map-traffic-nav-field">
-            <span className="map-traffic-nav-label">From</span>
+      <div className="map-navigation-shell" aria-label="Saved navigation routes">
+        <div className="map-navigation-routes-scroll">
+          <ul className="map-navigation-routes" aria-label="From and to routes">
+            {routes.length === 0 ? (
+              <li className="map-navigation-empty">No saved routes yet. Add one below.</li>
+            ) : (
+              routes.map((route) => {
+                const mapsUrl = buildGoogleDirectionsUrl(route.from, route.to);
+                const isEditing = editingId === route.id;
+
+                if (isEditing) {
+                  return (
+                    <li key={route.id} className="map-navigation-route map-navigation-route--editing">
+                      <div className="map-navigation-route-edit-fields">
+                        <label className="map-navigation-edit-field">
+                          <span className="map-navigation-field-label">From</span>
+                          <input
+                            type="text"
+                            value={editFrom}
+                            onChange={(event) => setEditFrom(event.target.value)}
+                            placeholder="Starting place (optional)"
+                            maxLength={160}
+                            autoComplete="address-line1"
+                          />
+                        </label>
+                        <label className="map-navigation-edit-field">
+                          <span className="map-navigation-field-label">To</span>
+                          <input
+                            type="text"
+                            value={editTo}
+                            onChange={(event) => setEditTo(event.target.value)}
+                            placeholder="Destination"
+                            maxLength={160}
+                            autoComplete="address-line1"
+                          />
+                        </label>
+                      </div>
+                      <div className="map-navigation-route-edit-actions">
+                        <button type="button" onClick={() => updateRoute(route.id, editFrom, editTo)}>
+                          Save
+                        </button>
+                        <button type="button" onClick={cancelEdit}>
+                          Cancel
+                        </button>
+                      </div>
+                    </li>
+                  );
+                }
+
+                return (
+                  <li key={route.id} className="map-navigation-route">
+                    <a
+                      className={`map-navigation-route-link map-layer-toggle map-layer-toggle--link${mapsUrl ? " is-on" : ""}`}
+                      href={mapsUrl ?? "#"}
+                      target="_blank"
+                      rel="noreferrer noopener"
+                      tabIndex={mapsUrl ? undefined : -1}
+                      aria-disabled={!mapsUrl}
+                      onClick={(event) => {
+                        if (!mapsUrl) event.preventDefault();
+                      }}
+                    >
+                      <span className="map-navigation-route-meta">
+                        {route.from.trim() ? route.from.trim() : "Your location"}
+                        <span aria-hidden="true"> → </span>
+                        {route.to.trim()}
+                      </span>
+                      <span className="map-navigation-route-cta">Google Maps</span>
+                    </a>
+                    <button
+                      type="button"
+                      className="map-navigation-icon-btn"
+                      aria-label={`Edit route to ${route.to}`}
+                      onClick={(event) => {
+                        event.preventDefault();
+                        beginEdit(route);
+                      }}
+                    >
+                      Edit
+                    </button>
+                    <button
+                      type="button"
+                      className="map-navigation-icon-btn map-navigation-icon-btn--danger"
+                      aria-label={`Remove route to ${route.to}`}
+                      onClick={(event) => {
+                        event.preventDefault();
+                        removeRoute(route.id);
+                      }}
+                    >
+                      ✕
+                    </button>
+                  </li>
+                );
+              })
+            )}
+          </ul>
+        </div>
+        <form className="map-navigation-add-form" aria-label="Add route" onSubmit={addRoute}>
+          <label className="map-navigation-edit-field map-navigation-edit-field--inline">
+            <span className="map-navigation-field-label">From</span>
             <input
               type="text"
-              value={navFrom}
-              onChange={(e) => setNavFrom(e.target.value)}
-              placeholder="Starting place"
+              value={draftFrom}
+              onChange={(event) => setDraftFrom(event.target.value)}
+              placeholder="Starting place (optional)"
               maxLength={160}
               autoComplete="address-line1"
             />
           </label>
-          <label className="map-traffic-nav-field">
-            <span className="map-traffic-nav-label">To</span>
+          <label className="map-navigation-edit-field map-navigation-edit-field--inline">
+            <span className="map-navigation-field-label">To</span>
             <input
               type="text"
-              value={navTo}
-              onChange={(e) => setNavTo(e.target.value)}
-              placeholder="Destination"
+              value={draftTo}
+              onChange={(event) => setDraftTo(event.target.value)}
+              placeholder="Destination (required)"
               maxLength={160}
               autoComplete="address-line1"
             />
           </label>
-        </div>
-        <div className="map-traffic-nav-actions" role="group" aria-label="Open route in">
-          <a
-            className={`map-layer-toggle map-layer-toggle--link${canNavigate ? " is-on" : ""}`}
-            href={wazeDirectionsUrl ?? "#"}
-            target="_blank"
-            rel="noreferrer noopener"
-            tabIndex={canNavigate ? undefined : -1}
-            aria-disabled={!canNavigate}
-            onClick={(e) => {
-              if (!canNavigate) e.preventDefault();
-            }}
-          >
-            Waze
-          </a>
-          <a
-            className={`map-layer-toggle map-layer-toggle--link${canNavigate ? " is-on" : ""}`}
-            href={googleDirectionsUrl ?? "#"}
-            target="_blank"
-            rel="noreferrer noopener"
-            tabIndex={canNavigate ? undefined : -1}
-            aria-disabled={!canNavigate}
-            onClick={(e) => {
-              if (!canNavigate) e.preventDefault();
-            }}
-          >
-            Maps
-          </a>
-        </div>
-      </form>
+          <button type="submit" className="map-navigation-add-submit">
+            Add route
+          </button>
+        </form>
+      </div>
 
       <MapContainer
         center={stationCenter}
@@ -402,6 +523,6 @@ export function DashboardLeafletMap(props: DashboardLeafletMapProps) {
   return variant === "radar" ? (
     <RadarDashboardLeafletMap {...rest} />
   ) : (
-    <TrafficDashboardLeafletMap {...rest} />
+    <NavigationDashboardLeafletMap {...rest} />
   );
 }
