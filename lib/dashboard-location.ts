@@ -63,9 +63,9 @@ export function parseDashboardLocation(raw: string | null): DashboardLocation | 
 
 export function formatHeroIntroCopy(placeLabel: string, hasChosenPlace: boolean): string {
   if (!hasChosenPlace) {
-    return "Unified station board — meteorology overlays, plotted vectors, ticker telemetry, headline uplink. Claim an anchorage below to bind this deck to real space.";
+    return "Local weather, maps, markets, and headlines in one LCARS-style board — set your station below.";
   }
-  return `${placeLabel}: localized telemetry lattice — synced atmosphere mantle, transit solutions, market bands, and priority bulletins.`;
+  return `${placeLabel}: weather, navigation, markets, and alerts scoped to your coordinates.`;
 }
 
 /** Short zone label for UI (e.g. `America/Chicago` → `CT`). Uses `shortGeneric` when supported. */

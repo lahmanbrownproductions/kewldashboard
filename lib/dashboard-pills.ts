@@ -24,6 +24,7 @@ const PILLS_BY_SECTION: Record<DashboardSectionId, ControlPill[]> = {
   watchlist: [{ label: "Market Core", targetId: "watchlist", accent: "gold" }],
   bookmarks: [{ label: "Quick Links", targetId: "bookmarks", accent: "gold" }],
   radar: [
+    { label: "Sky", targetId: "science-sky", accent: "peach" },
     { label: "SpaceX", targetId: "spacex-launches", accent: "peach" },
     { label: "Weather Radar", targetId: "radar-map", accent: "peach" },
   ],

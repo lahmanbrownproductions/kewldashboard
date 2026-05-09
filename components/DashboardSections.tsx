@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { BookmarksPanel } from "@/components/BookmarksPanel";
 import { ClockPanel } from "@/components/ClockPanel";
 import { LocalMapPanel } from "@/components/LocalMapPanels";
+import { ScienceSkyPanel } from "@/components/ScienceSkyPanel";
 import { SpaceXLaunchPanel } from "@/components/SpaceXLaunchPanel";
 import { LcarsRailHeights } from "@/components/LcarsRailHeights";
 import { LcarsRailNav } from "@/components/LcarsRailNav";
@@ -79,6 +80,7 @@ export function DashboardSections({ initialWeatherReport }: DashboardSectionsPro
             className="mission-grid scroll-target"
             aria-label="Science"
           >
+            <ScienceSkyPanel />
             <SpaceXLaunchPanel key={`spacex:${mapRemountKey}`} />
             <LocalMapPanel
               key={`radar-map:${mapRemountKey}`}

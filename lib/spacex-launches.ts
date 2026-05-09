@@ -1,7 +1,25 @@
+import { unstable_cache } from "next/cache";
+
 /** Launch Library 2 — https://thespacedevs.com/ (SpaceX provider id is stable in LL2). */
 export const SPACEX_LAUNCH_LIBRARY_PROVIDER_ID = 121;
 
 const LAUNCH_LIBRARY_UPCOMING = "https://ll.thespacedevs.com/2.2.0/launch/upcoming/";
+
+/** Space Devs Patreon key — `Authorization: Token …`. Raises rate limits above ~15 req/hour per IP. */
+const launchLibraryRevalidateSec = () =>
+  process.env.SPACEDEVS_API_TOKEN?.trim() ? 300 : 3600;
+
+/** Deduplicate parallel requests in one server instance (cold starts still get their own copy). */
+let inflightLaunches: Promise<SpaceXLaunchBrief[]> | null = null;
+/** Last good manifest so a 429/timeout still returns data when possible. */
+let lastGoodLaunches: SpaceXLaunchBrief[] | null = null;
+
+export class LaunchLibraryHttpError extends Error {
+  constructor(readonly status: number, message = `Launch Library HTTP ${status}`) {
+    super(message);
+    this.name = "LaunchLibraryHttpError";
+  }
+}
 
 type LLNormalLaunch = {
   id: string;
@@ -31,7 +49,7 @@ type LLDetailedLaunch = LLNormalLaunch & {
 };
 
 type LLListResponse = {
-  results?: LLNormalLaunch[];
+  results?: LLDetailedLaunch[];
 };
 
 export type SpaceXLaunchBrief = {
@@ -52,37 +70,33 @@ export type SpaceXLaunchBrief = {
   officialUrl: string | null;
 };
 
-const fetchHeaders = {
-  "User-Agent": "kewldashboard/1.0 (+https://github.com/lahmanbrownproductions/kewldashboard)",
-};
+function launchLibraryHeaders(): Record<string, string> {
+  const headers: Record<string, string> = {
+    "User-Agent": "kewldashboard/1.0 (+https://github.com/lahmanbrownproductions/kewldashboard)",
+  };
+  const token = process.env.SPACEDEVS_API_TOKEN?.trim();
+  if (token) {
+    headers.Authorization = `Token ${token}`;
+  }
+  return headers;
+}
 
-async function fetchLaunchList(limit: number, offset: number): Promise<LLNormalLaunch[]> {
+/** One HTTP call per page — `mode=detailed` includes webcast/update fields (no per-launch detail request). */
+async function fetchUpcomingLaunchPage(limit: number, offset: number): Promise<LLDetailedLaunch[]> {
   const params = new URLSearchParams({
-    mode: "normal",
+    mode: "detailed",
     limit: String(limit),
     offset: String(offset),
   });
   const res = await fetch(`${LAUNCH_LIBRARY_UPCOMING}?${params}`, {
-    headers: fetchHeaders,
-    next: { revalidate: 120 },
+    headers: launchLibraryHeaders(),
+    cache: "no-store",
   });
   if (!res.ok) {
-    throw new Error(`Launch Library list ${res.status}`);
+    throw new LaunchLibraryHttpError(res.status, `Launch Library list ${res.status}`);
   }
   const data = (await res.json()) as LLListResponse;
   return Array.isArray(data.results) ? data.results : [];
-}
-
-async function fetchLaunchDetailed(id: string): Promise<LLDetailedLaunch | null> {
-  const params = new URLSearchParams({ mode: "detailed" });
-  const res = await fetch(
-    `https://ll.thespacedevs.com/2.2.0/launch/${encodeURIComponent(id)}/?${params}`,
-    { headers: fetchHeaders, next: { revalidate: 120 } },
-  );
-  if (!res.ok) {
-    return null;
-  }
-  return (await res.json()) as LLDetailedLaunch;
 }
 
 function normalizeBrief(
@@ -126,13 +140,13 @@ function normalizeBrief(
   };
 }
 
-export async function fetchUpcomingSpaceXLaunches(max = 4): Promise<SpaceXLaunchBrief[]> {
-  const collected: LLNormalLaunch[] = [];
+async function fetchUpcomingSpaceXLaunchesImpl(max = 4): Promise<SpaceXLaunchBrief[]> {
+  const collected: LLDetailedLaunch[] = [];
   const seen = new Set<string>();
-  const batchSize = 60;
+  const batchSize = 100;
 
-  for (let offset = 0; offset < 240 && collected.length < max + 2; offset += batchSize) {
-    const batch = await fetchLaunchList(batchSize, offset);
+  for (let offset = 0; offset < 200 && collected.length < max + 2; offset += batchSize) {
+    const batch = await fetchUpcomingLaunchPage(batchSize, offset);
     if (batch.length === 0) {
       break;
     }
@@ -149,6 +163,9 @@ export async function fetchUpcomingSpaceXLaunches(max = 4): Promise<SpaceXLaunch
         break;
       }
     }
+    if (batch.length < batchSize) {
+      break;
+    }
   }
 
   collected.sort((a, b) => new Date(a.net).getTime() - new Date(b.net).getTime());
@@ -158,7 +175,30 @@ export async function fetchUpcomingSpaceXLaunches(max = 4): Promise<SpaceXLaunch
     return [];
   }
 
-  const detailed = await fetchLaunchDetailed(top[0].id);
+  return top.map((row) => normalizeBrief(row, row));
+}
 
-  return top.map((row, i) => normalizeBrief(row, i === 0 ? detailed : null));
+export function fetchUpcomingSpaceXLaunches(max = 4): Promise<SpaceXLaunchBrief[]> {
+  if (inflightLaunches) {
+    return inflightLaunches;
+  }
+  inflightLaunches = (async () => {
+    try {
+      const data = await unstable_cache(
+        () => fetchUpcomingSpaceXLaunchesImpl(max),
+        ["kewldashboard-spacex-upcoming", String(max)],
+        { revalidate: launchLibraryRevalidateSec(), tags: ["spacex-upcoming"] },
+      )();
+      lastGoodLaunches = data;
+      return data;
+    } catch (e) {
+      if (lastGoodLaunches?.length) {
+        return lastGoodLaunches;
+      }
+      throw e;
+    } finally {
+      inflightLaunches = null;
+    }
+  })();
+  return inflightLaunches;
 }

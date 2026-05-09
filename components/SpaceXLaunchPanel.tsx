@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { useDashboardLocation } from "@/components/dashboard-location-context";
 import type { SpaceXLaunchBrief } from "@/lib/spacex-launches";
@@ -25,6 +25,17 @@ function formatNetInZone(iso: string, timeZone: string): string {
   } catch {
     return new Date(iso).toUTCString();
   }
+}
+
+/** Local T− ticks every second; this only gates how often we hit `/api/spacex-launches`. */
+const BACKGROUND_SYNC_MS = 15 * 60 * 1000;
+/** Avoid a fetch storm when flipping browser tabs. */
+const MIN_MS_VISIBILITY_SYNC = 3 * 60 * 1000;
+
+function launchesSyncFingerprint(launches: SpaceXLaunchBrief[]): string {
+  return launches
+    .map((l) => `${l.id}:${l.net}:${l.statusAbbrev}:${l.statusName}`)
+    .join("|");
 }
 
 function countdownLabel(targetMs: number, nowMs: number): string {
@@ -54,23 +65,33 @@ export function SpaceXLaunchPanel() {
   const [payload, setPayload] = useState<ApiPayload | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [now, setNow] = useState(() => Date.now());
+  const lastVisibilitySyncAt = useRef(0);
+
+  const fetchPayload = useCallback(async (): Promise<ApiPayload | null> => {
+    const res = await fetch("/api/spacex-launches", { cache: "no-store" });
+    const json = (await res.json()) as ApiPayload;
+    if (!res.ok) {
+      throw new Error(json.error ?? "Schedule relay offline");
+    }
+    return json;
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
     setLoadError(null);
     (async () => {
       try {
-        const res = await fetch("/api/spacex-launches");
-        const json = (await res.json()) as ApiPayload;
-        if (!res.ok) {
-          throw new Error(json.error ?? "Request failed");
-        }
-        if (!cancelled) {
+        const json = await fetchPayload();
+        if (!cancelled && json) {
           setPayload(json);
+          setLoadError(
+            json.error && (!json.launches || json.launches.length === 0) ? json.error : null,
+          );
         }
-      } catch {
+      } catch (err) {
         if (!cancelled) {
-          setLoadError("Schedule relay offline");
+          const msg = err instanceof Error && err.message ? err.message : "Schedule relay offline";
+          setLoadError(msg);
           setPayload(null);
         }
       }
@@ -78,15 +99,65 @@ export function SpaceXLaunchPanel() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [fetchPayload]);
+
+  /** Occasional manifest refresh; NET/countdown stays local until the payload differs. */
+  const resyncSilently = useCallback(async () => {
+    if (document.visibilityState !== "visible") {
+      return;
+    }
+    try {
+      const json = await fetchPayload();
+      if (json) {
+        setPayload((prev) => {
+          if (!prev) {
+            return json;
+          }
+          if (launchesSyncFingerprint(json.launches) === launchesSyncFingerprint(prev.launches)) {
+            return prev;
+          }
+          return json;
+        });
+        if (json.launches.length > 0) {
+          setLoadError(null);
+        }
+      }
+    } catch {
+      /* keep showing last good data */
+    }
+  }, [fetchPayload]);
+
+  const launches = payload?.launches ?? [];
+  const primary = launches[0];
+
+  useEffect(() => {
+    const id = window.setInterval(() => {
+      void resyncSilently();
+    }, BACKGROUND_SYNC_MS);
+    return () => window.clearInterval(id);
+  }, [resyncSilently]);
+
+  useEffect(() => {
+    function onVisible() {
+      if (document.visibilityState !== "visible") {
+        return;
+      }
+      const t = Date.now();
+      if (t - lastVisibilitySyncAt.current < MIN_MS_VISIBILITY_SYNC) {
+        return;
+      }
+      lastVisibilitySyncAt.current = t;
+      void resyncSilently();
+    }
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
+  }, [resyncSilently]);
 
   useEffect(() => {
     const id = window.setInterval(() => setNow(Date.now()), 1000);
     return () => window.clearInterval(id);
   }, []);
 
-  const launches = payload?.launches ?? [];
-  const primary = launches[0];
   const rest = launches.slice(1);
 
   const countdown = useMemo(() => {
@@ -109,7 +180,7 @@ export function SpaceXLaunchPanel() {
           <a href="https://www.spacex.com/launches" target="_blank" rel="noreferrer noopener">
             SpaceX
           </a>
-          {" · "}
+          <br />
           <a href="https://thespacedevs.com" target="_blank" rel="noreferrer noopener">
             Launch Library 2
           </a>

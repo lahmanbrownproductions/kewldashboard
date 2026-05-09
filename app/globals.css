@@ -58,6 +58,8 @@ html {
   background: var(--space);
   scroll-behavior: smooth;
   scroll-padding-top: 1.5rem;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
 }
 
 body {
@@ -114,7 +116,12 @@ iframe {
   row-gap: 0.45rem;
   column-gap: 0.55rem;
   min-height: 100vh;
+  min-height: 100dvh;
   padding: 1.5rem;
+  padding-left: max(1.5rem, env(safe-area-inset-left, 0px));
+  padding-right: max(1.5rem, env(safe-area-inset-right, 0px));
+  padding-top: max(1.5rem, env(safe-area-inset-top, 0px));
+  padding-bottom: max(1.5rem, env(safe-area-inset-bottom, 0px));
   overflow-x: hidden;
 }
 
@@ -2150,6 +2157,187 @@ h1 {
   color: var(--muted);
 }
 
+.mission-grid .science-sky-panel {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-rows: auto auto;
+  gap: 0.75rem;
+  height: auto;
+  min-height: 0;
+  padding: 1rem;
+}
+
+.science-sky-panel .panel-heading {
+  margin-bottom: 0;
+}
+
+.science-sky-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr) minmax(0, 1.2fr);
+  gap: 1rem 1.25rem;
+  align-items: start;
+}
+
+.science-sky-moon-block {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 0.85rem;
+  align-items: center;
+}
+
+.science-sky-moon-glyph {
+  width: 4.25rem;
+  height: 4.25rem;
+  flex-shrink: 0;
+}
+
+.science-sky-moon-glyph__lit {
+  fill: var(--gold);
+  opacity: 0.92;
+}
+
+.science-sky-moon-glyph__shade {
+  fill: #050507;
+  opacity: 0.92;
+}
+
+.science-sky-moon-readout {
+  display: grid;
+  gap: 0.25rem;
+  min-width: 0;
+}
+
+.science-sky-phase-name {
+  margin: 0;
+  font-family: var(--font-display), sans-serif;
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--gold);
+  line-height: 1.2;
+}
+
+.science-sky-telemetry {
+  margin: 0;
+  font-family: var(--font-mono), monospace;
+  font-size: 0.7rem;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 0.4rem;
+}
+
+.science-sky-telemetry span {
+  color: var(--muted);
+}
+
+.science-sky-telemetry strong {
+  color: var(--text);
+  font-weight: 700;
+}
+
+.science-sky-telemetry--jd strong {
+  font-variant-numeric: tabular-nums;
+}
+
+.science-sky-section-title {
+  margin: 0 0 0.35rem;
+  font-family: var(--font-display), sans-serif;
+  font-size: 0.65rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--peach);
+}
+
+.science-sky-events {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 0.35rem;
+}
+
+.science-sky-events li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.35rem 0.55rem;
+  font-family: var(--font-mono), monospace;
+  font-size: 0.68rem;
+  color: var(--muted);
+}
+
+.science-sky-events span {
+  min-width: 2.75rem;
+  font-family: var(--font-display), sans-serif;
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--gold);
+}
+
+.science-sky-events strong {
+  font-weight: 600;
+  color: var(--text);
+}
+
+.science-sky-season {
+  margin: 0.55rem 0 0;
+  font-size: 0.72rem;
+  line-height: 1.4;
+  color: var(--text);
+  opacity: 0.92;
+}
+
+.science-sky-charts {
+  min-width: 0;
+}
+
+.science-sky-links {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 0.45rem;
+}
+
+.science-sky-links li {
+  display: grid;
+  gap: 0.08rem;
+}
+
+.science-sky-links a {
+  font-family: var(--font-display), sans-serif;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--gold);
+  text-decoration: underline;
+  text-underline-offset: 0.14em;
+}
+
+.science-sky-links a:hover {
+  color: var(--orange);
+}
+
+.science-sky-link-hint {
+  font-family: var(--font-mono), monospace;
+  font-size: 0.64rem;
+  color: var(--muted);
+  letter-spacing: 0.02em;
+}
+
+@media (max-width: 980px) {
+  .science-sky-body {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
 .radar-panel {
   border-color: var(--peach);
 }
@@ -2962,13 +3150,82 @@ a.subspace-feed-card:focus-visible {
   }
 }
 
+@media (max-width: 900px) {
+  .hero {
+    grid-template-columns: 1fr;
+    gap: 0.65rem 0;
+  }
+
+  .hero > * {
+    min-width: 0;
+  }
+}
+
 @media (max-width: 760px) {
   .dashboard-shell {
-    padding: 1rem;
+    padding-bottom: max(1rem, env(safe-area-inset-bottom, 0px));
+    padding-top: max(1rem, env(safe-area-inset-top, 0px));
+    padding-left: max(1.35rem, calc(env(safe-area-inset-left, 0px) + 0.75rem));
+    padding-right: max(1.35rem, calc(env(safe-area-inset-right, 0px) + 0.75rem));
     grid-template-columns: 1fr;
     grid-template-rows: none;
     row-gap: 0.45rem;
     align-items: stretch;
+    overflow-x: hidden;
+    overflow-x: clip;
+  }
+
+  .dashboard-main,
+  .dashboard-main > *,
+  .lcars-masthead,
+  .dashboard-shell > header#overview.hero {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .top-grid > .panel,
+  .mission-grid > .panel {
+    min-width: 0;
+  }
+
+  .weather-metrics {
+    min-width: 0;
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .forecast-strip {
+    min-width: 0;
+  }
+
+  .top-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .mission-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .science-sky-moon-block {
+    grid-template-columns: 1fr;
+    justify-items: center;
+    text-align: center;
+  }
+
+  .science-sky-moon-readout {
+    justify-items: center;
+    text-align: center;
+  }
+
+  .science-sky-events li,
+  .science-sky-telemetry {
+    justify-content: center;
+  }
+
+  .map-panel,
+  .spacex-launch-panel {
+    height: auto;
+    min-height: clamp(18rem, 52dvh, 32rem);
   }
 
   .dashboard-stage {
@@ -2984,16 +3241,98 @@ a.subspace-feed-card:focus-visible {
 
   .hero {
     min-width: 0;
-    padding-left: 1rem;
-    padding-right: 1rem;
+    grid-template-columns: 1fr;
+    gap: 0.65rem 0;
+    padding: 0.85rem max(0.85rem, env(safe-area-inset-right, 0px)) 1rem
+      max(0.85rem, env(safe-area-inset-left, 0px));
+    padding-top: max(0.85rem, env(safe-area-inset-top, 0px));
+    border-width: 3px;
+  }
+
+  #overview.hero.panel {
+    border-radius: 1.15rem;
+  }
+
+  .hero-intro {
+    order: 1;
+  }
+
+  .hero-intro .control-pills {
+    margin-top: 0.45rem;
+  }
+
+  .status-bank {
+    order: 2;
+    margin-top: 0;
+    padding-top: 0.5rem;
+  }
+
+  h1 {
+    font-size: clamp(1.45rem, 7vw, 2.35rem);
+    line-height: 1.08;
+  }
+
+  .hero-copy {
+    max-width: none;
+    margin-top: 0.45rem;
+    font-size: clamp(0.88rem, 3.8vw, 1.05rem);
+    line-height: 1.45;
+  }
+
+  .dashboard-title-field {
+    flex-flow: row wrap;
+    align-items: flex-start;
+  }
+
+  .control-pills {
+    grid-template-columns: repeat(auto-fill, minmax(10.25rem, 1fr));
+    gap: 0.4rem;
+  }
+
+  .control-pills .control-pill {
+    min-height: 2.25rem;
+    padding: 0.35rem 0.55rem;
+    font-size: 0.6rem;
+    white-space: normal;
+    text-align: center;
+    line-height: 1.2;
+    hyphens: auto;
+  }
+
+  .dashboard-theme-toggle {
+    grid-column: 1 / -1;
+    justify-self: stretch;
+    width: 100%;
+    justify-content: center;
+  }
+
+  .hero-location-row {
+    flex-wrap: wrap;
+  }
+
+  .hero-location-place {
+    flex: 1 1 100%;
+    min-width: 100%;
+  }
+
+  .hero-location-save {
+    flex: 1 1 auto;
+    width: 100%;
+    max-width: none;
+    border-radius: 0.85rem;
+    min-height: 2.35rem;
+  }
+
+  .status-bank-stats strong {
+    overflow-wrap: anywhere;
+    word-break: break-word;
+    max-width: 100%;
+    font-size: 0.88rem;
+    line-height: 1.35;
   }
 
   .hero > * {
     min-width: 0;
-  }
-
-  .control-pills {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .hero-location-form,
@@ -3001,17 +3340,6 @@ a.subspace-feed-card:focus-visible {
     gap: 0.5rem;
     min-width: 0;
     width: 100%;
-  }
-
-  .hero-location-save {
-    flex: 0 0 auto;
-    width: auto;
-    max-width: none;
-    box-sizing: border-box;
-    white-space: nowrap;
-    text-align: center;
-    padding-left: 0.65rem;
-    padding-right: 0.65rem;
   }
 
   .lcars-rail {

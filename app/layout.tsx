@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Orbitron, Share_Tech_Mono } from "next/font/google";
 import { ButtonBeepHandler } from "@/components/ButtonBeepHandler";
 import { DashboardLocationProvider } from "@/components/dashboard-location-context";
@@ -21,6 +21,12 @@ export const metadata: Metadata = {
   title: "Kewl Dashboard",
   description:
     "An LCARS-inspired command dashboard for your station: local weather, navigation, markets, and subspace RSS relays.",
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
 };
 
 export default function RootLayout({
