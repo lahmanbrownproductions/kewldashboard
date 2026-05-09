@@ -3,6 +3,7 @@
 import { FormEvent, useEffect, useState } from "react";
 
 import { DashboardThemeToggle } from "@/components/DashboardThemeToggle";
+import { EditableDashboardTitle } from "@/components/EditableDashboardTitle";
 import { useDashboardLocation } from "@/components/dashboard-location-context";
 import { playErrorBeep } from "@/lib/button-beep";
 import {
@@ -84,7 +85,7 @@ export function HeroOverview({ controlPills }: HeroOverviewProps) {
     <>
       <div className="hero-intro">
         <p className="eyebrow">lahmanbrownproductions</p>
-        <h1>Kewl Dashboard</h1>
+        <EditableDashboardTitle />
         <p className="hero-copy">{formatLocationTagline(location.label)}</p>
         <div className="control-pills" aria-label="Auxiliary controls">
           {controlPills.map((pill, index) => (
