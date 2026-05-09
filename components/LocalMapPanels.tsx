@@ -7,6 +7,8 @@ import { useDashboardLocation } from "@/components/dashboard-location-context";
 
 type LocalMapPanelProps = {
   variant: "radar" | "navigation";
+  /** When `null`, the article has no `id` (parent supplies `#radar`). When a string, sets that id. */
+  scrollAnchorId?: string | null;
 };
 
 const DashboardLeafletMap = dynamic(
@@ -22,7 +24,7 @@ const DashboardLeafletMap = dynamic(
   },
 );
 
-export function LocalMapPanel({ variant }: LocalMapPanelProps) {
+export function LocalMapPanel({ variant, scrollAnchorId }: LocalMapPanelProps) {
   const { location } = useDashboardLocation();
 
   const center = useMemo(
@@ -33,9 +35,12 @@ export function LocalMapPanel({ variant }: LocalMapPanelProps) {
   const areaLabel = location.label;
   const isRadar = variant === "radar";
 
+  const domId =
+    scrollAnchorId === null ? undefined : scrollAnchorId ?? (isRadar ? variant : "traffic");
+
   return (
     <article
-      id={isRadar ? variant : "traffic"}
+      {...(domId ? { id: domId } : {})}
       className={`panel map-panel ${isRadar ? "radar-panel" : "navigation-panel"} scroll-target`}
     >
       <div className="panel-heading">

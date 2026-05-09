@@ -23,7 +23,10 @@ const PILLS_BY_SECTION: Record<DashboardSectionId, ControlPill[]> = {
   systems: SYSTEMS_PILLS,
   watchlist: [{ label: "Market Core", targetId: "watchlist", accent: "gold" }],
   bookmarks: [{ label: "Quick Links", targetId: "bookmarks", accent: "gold" }],
-  radar: [{ label: "Weather Radar", targetId: "radar", accent: "peach" }],
+  radar: [
+    { label: "SpaceX", targetId: "spacex-launches", accent: "peach" },
+    { label: "Weather Radar", targetId: "radar-map", accent: "peach" },
+  ],
   traffic: [{ label: "Navigation", targetId: "traffic", accent: "purple" }],
   news: [{ label: "Subspace Feed", targetId: "news", accent: "blue" }],
 };

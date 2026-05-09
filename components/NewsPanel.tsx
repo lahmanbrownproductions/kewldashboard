@@ -290,10 +290,13 @@ export function NewsPanel() {
     }
   }, [activeRssUrl, rssUrls]);
 
-  const headingDetail = rssLoading ? "Loading…" : channelTitle || "RSS";
+  const headingDetail = rssLoading ? "Loading…" : channelTitle || "Relay";
 
-  const renderableItems = useMemo(
-    () => rssItems.filter((item) => sanitizableArticleHtml(item) !== null),
+  const displayItems = useMemo(
+    () =>
+      rssItems.filter(
+        (item) => Boolean(item.excerpt?.trim()) || sanitizableArticleHtml(item) !== null,
+      ),
     [rssItems],
   );
 
@@ -306,18 +309,27 @@ export function NewsPanel() {
     return clean.length > 0 ? clean : null;
   }, [articleReader]);
 
-  const openArticle = useCallback((item: NewsItem) => {
-    const html = item.contentHtml?.trim();
-    const canonicalUrl = canonicalArticleUrl(item.link);
-    if (!html || !sanitizableArticleHtml(item) || !canonicalUrl) {
-      playErrorBeep();
+  const handleReadMore = useCallback((item: NewsItem) => {
+    if (sanitizableArticleHtml(item)) {
+      const html = item.contentHtml?.trim();
+      const canonicalUrl = canonicalArticleUrl(item.link);
+      if (!html || !canonicalUrl) {
+        playErrorBeep();
+        return;
+      }
+      setArticleReader({
+        canonicalUrl,
+        title: item.title,
+        contentHtml: html,
+      });
       return;
     }
-    setArticleReader({
-      canonicalUrl,
-      title: item.title,
-      contentHtml: html,
-    });
+    const url = canonicalArticleUrl(item.link);
+    if (url) {
+      window.open(url, "_blank", "noopener,noreferrer");
+    } else {
+      playErrorBeep();
+    }
   }, []);
 
   const closeArticle = useCallback(() => {
@@ -325,10 +337,10 @@ export function NewsPanel() {
   }, []);
 
   const feedCrumbLabel =
-    activeRssUrl && channelTitle ? channelTitle : activeRssUrl ? feedLabel(activeRssUrl) : "Feed";
+    activeRssUrl && channelTitle ? channelTitle : activeRssUrl ? feedLabel(activeRssUrl) : "Channel";
 
   return (
-    <section className="panel news-panel scroll-target" aria-label="RSS news" id="news">
+    <section className="panel news-panel scroll-target" aria-label="Subspace relay, full-text RSS" id="news">
       <div className="panel-heading news-panel-heading">
         <span>Subspace Feed</span>
         <div className="news-panel-heading__title-row">
@@ -339,8 +351,8 @@ export function NewsPanel() {
               className={`news-rss-refresh${rssLoading ? " news-rss-refresh--loading" : ""}`}
               onClick={refreshRssManual}
               disabled={rssLoading}
-              title="Refresh feed"
-              aria-label="Refresh RSS feed"
+              title="Refresh channel"
+              aria-label="Refresh subspace channel"
             >
               <svg className="news-rss-refresh__icon" viewBox="0 0 24 24" width={18} height={18} aria-hidden>
                 <path
@@ -356,9 +368,9 @@ export function NewsPanel() {
       <div className="news-panel-main">
         {articleReader ? (
           <>
-            <nav className="news-feed-breadcrumb" aria-label="Feed navigation">
+            <nav className="news-feed-breadcrumb" aria-label="Subspace relay navigation">
               <button type="button" className="news-feed-breadcrumb__crumb" onClick={closeArticle}>
-                Subspace Feed
+                Subspace relay
               </button>
               <span className="news-feed-breadcrumb__sep" aria-hidden>
                 ›
@@ -374,55 +386,57 @@ export function NewsPanel() {
               </span>
             </nav>
 
-            <div className="news-reader-inline">
-              <header className="news-reader-toolbar">
-                <h2 id="news-reader-title" className="news-reader-title-inline">
-                  {articleReader.title}
-                </h2>
-                <div className="news-reader-actions">
-                  <button
-                    type="button"
-                    className="news-reader-close-x"
-                    onClick={() => {
-                      playReaderCloseBeep();
-                      closeArticle();
-                    }}
-                    title="Close and return to feed"
-                    aria-label="Close article and return to feed list"
+            <div className="news-reader-panel-scroll">
+              <div className="news-reader-inline">
+                <header className="news-reader-toolbar">
+                  <h2 id="news-reader-title" className="news-reader-title-inline">
+                    {articleReader.title}
+                  </h2>
+                  <div className="news-reader-actions">
+                    <button
+                      type="button"
+                      className="news-reader-close-x"
+                      onClick={() => {
+                        playReaderCloseBeep();
+                        closeArticle();
+                      }}
+                      title="Back to relay list"
+                      aria-label="Back to subspace relay list"
+                    >
+                      ×
+                    </button>
+                    <a
+                      className="news-reader-external"
+                      href={articleReader.canonicalUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      Open at source
+                    </a>
+                  </div>
+                </header>
+                {sanitizedReaderHtml ? (
+                  <div
+                    ref={proseScrollRef}
+                    className="news-reader-prose-scroll news-reader-prose-scroll--inline"
                   >
-                    ×
-                  </button>
-                  <a
-                    className="news-reader-external"
-                    href={articleReader.canonicalUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                  >
-                    Open RSS source
-                  </a>
-                </div>
-              </header>
-              {sanitizedReaderHtml ? (
-                <div
-                  ref={proseScrollRef}
-                  className="news-reader-prose-scroll news-reader-prose-scroll--inline"
-                >
-                  <article
-                    className="news-reader-prose"
-                    dangerouslySetInnerHTML={{ __html: sanitizedReaderHtml }}
-                  />
-                </div>
-              ) : (
-                <p className="news-reader-note">
-                  This story could not be sanitized for in-app display. Open the RSS source.
-                </p>
-              )}
+                    <article
+                      className="news-reader-prose"
+                      dangerouslySetInnerHTML={{ __html: sanitizedReaderHtml }}
+                    />
+                  </div>
+                ) : (
+                  <p className="news-reader-note">
+                    This story could not be sanitized for in-app display. Open at source.
+                  </p>
+                )}
+              </div>
             </div>
           </>
         ) : (
           <>
             <div className="news-rss-controls">
-              <div className="market-panel-tabs news-feed-tabs" role="tablist" aria-label="Saved RSS feeds">
+              <div className="market-panel-tabs news-feed-tabs" role="tablist" aria-label="Saved subspace channels">
                 {rssUrls.map((url) => (
                   <button
                     key={url}
@@ -441,47 +455,79 @@ export function NewsPanel() {
                 <input
                   type="url"
                   name="feedUrl"
-                  placeholder="Full-text feed URL (e.g. Substack …/feed)"
+                  placeholder="Full-text channel URL (e.g. Substack …/feed)"
                   autoComplete="off"
                   value={feedInput}
                   onChange={(ev) => setFeedInput(ev.target.value)}
                 />
-                <button type="submit">Add feed</button>
+                <button type="submit">Add channel</button>
               </form>
               {rssUrls.length > 0 && activeRssUrl ? (
                 <button type="button" className="news-rss-remove" onClick={removeActiveFeed}>
-                  Remove current feed
+                  Remove current channel
                 </button>
               ) : null}
               <p className="news-rss-hint">
-                Only stories with HTML in the feed are listed—headline-only feeds (many news wires) stay hidden unless you
-                swap the source.
+                Full article view needs HTML in the feed (<code>content:encoded</code> or rich <code>description</code>).
+                Headline-only wires still show a preview blurb when the feed includes a summary.
               </p>
               {rssError ? <p className="news-rss-error">{rssError}</p> : null}
             </div>
 
-            <div className="news-list" aria-busy={rssLoading}>
+            <div className="news-list-scroll" aria-busy={rssLoading}>
               {rssLoading ? (
                 <p className="news-rss-loading">Scanning subspace channels…</p>
               ) : !activeRssUrl ? (
-                <p className="news-rss-loading">Add a full-text RSS feed URL above.</p>
-              ) : renderableItems.length === 0 ? (
+                <p className="news-rss-loading">Add a relay URL above.</p>
+              ) : displayItems.length === 0 ? (
                 <p className="news-rss-loading">
-                  Nothing in this feed includes article markup. Try Substack, WordPress <code>/feed/</code>, or another
-                  source that publishes <code>content:encoded</code> or full HTML descriptions—not headline-only RSS.
+                  No entries with a readable preview or article body. Try another channel or a source that publishes full
+                  HTML in RSS.
                 </p>
               ) : (
-                renderableItems.map((item) => (
-                  <button
-                    key={`r-${item.link}-${item.title}`}
-                    type="button"
-                    className="news-list-card"
-                    onClick={() => openArticle(item)}
-                  >
-                    <span>{item.source}</span>
-                    <strong>{item.title}</strong>
-                  </button>
-                ))
+                <ul className="news-list" role="list">
+                  {displayItems.map((item) => {
+                    const inline = sanitizableArticleHtml(item) !== null;
+                    const href = canonicalArticleUrl(item.link) ?? item.link;
+                    const scanCue = "Scan document";
+
+                    const body = (
+                      <>
+                        <div className="subspace-feed-card__eyebrow">{item.source}</div>
+                        <h3 className="subspace-feed-card__title">{item.title}</h3>
+                        {item.excerpt ? <p className="subspace-feed-card__excerpt">{item.excerpt}</p> : null}
+                        <div className="subspace-feed-card__actions" aria-hidden="true">
+                          <span className="subspace-feed-scan-hint">{scanCue}</span>
+                        </div>
+                      </>
+                    );
+
+                    return (
+                      <li key={`r-${item.link}-${item.title}`}>
+                        {inline ? (
+                          <button
+                            type="button"
+                            className="subspace-feed-card"
+                            onClick={() => handleReadMore(item)}
+                            aria-label={`${scanCue}: ${item.title}`}
+                          >
+                            {body}
+                          </button>
+                        ) : (
+                          <a
+                            className="subspace-feed-card"
+                            href={href}
+                            target="_blank"
+                            rel="noreferrer noopener"
+                            aria-label={`${scanCue}: ${item.title} (opens in new tab)`}
+                          >
+                            {body}
+                          </a>
+                        )}
+                      </li>
+                    );
+                  })}
+                </ul>
               )}
             </div>
           </>

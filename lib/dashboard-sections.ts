@@ -4,7 +4,7 @@ export const DASHBOARD_SECTION_DEFS = [
   { id: "bookmarks", label: "Links", className: "rail-segment rail-links" },
   { id: "radar", label: "Science", className: "rail-segment rail-peach" },
   { id: "traffic", label: "Navigation", className: "rail-segment rail-purple" },
-  { id: "news", label: "News", className: "rail-segment rail-blue" },
+  { id: "news", label: "Subspace", className: "rail-segment rail-blue" },
 ] as const;
 
 export type DashboardSectionId = (typeof DASHBOARD_SECTION_DEFS)[number]["id"];

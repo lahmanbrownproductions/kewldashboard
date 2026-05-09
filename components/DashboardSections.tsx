@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { BookmarksPanel } from "@/components/BookmarksPanel";
 import { ClockPanel } from "@/components/ClockPanel";
 import { LocalMapPanel } from "@/components/LocalMapPanels";
+import { SpaceXLaunchPanel } from "@/components/SpaceXLaunchPanel";
 import { LcarsRailHeights } from "@/components/LcarsRailHeights";
 import { LcarsRailNav } from "@/components/LcarsRailNav";
 import { MarketPanel } from "@/components/MarketPanel";
@@ -71,7 +72,21 @@ export function DashboardSections({ initialWeatherReport }: DashboardSectionsPro
       case "bookmarks":
         return <BookmarksPanel key={sectionId} />;
       case "radar":
-        return <LocalMapPanel key={`radar:${mapRemountKey}`} variant="radar" />;
+        return (
+          <section
+            key={sectionId}
+            id="radar"
+            className="mission-grid scroll-target"
+            aria-label="Science"
+          >
+            <SpaceXLaunchPanel key={`spacex:${mapRemountKey}`} />
+            <LocalMapPanel
+              key={`radar-map:${mapRemountKey}`}
+              variant="radar"
+              scrollAnchorId="radar-map"
+            />
+          </section>
+        );
       case "traffic":
         return <LocalMapPanel key={`traffic:${mapRemountKey}`} variant="navigation" />;
       case "news":
