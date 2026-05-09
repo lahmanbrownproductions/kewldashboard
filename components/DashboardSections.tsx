@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 
 import { BookmarksPanel } from "@/components/BookmarksPanel";
 import { ClockPanel } from "@/components/ClockPanel";
+import { DashboardSectionJumpShortcuts } from "@/components/DashboardSectionJumpShortcuts";
 import { LocalMapPanel } from "@/components/LocalMapPanels";
 import { ScienceSkyPanel } from "@/components/ScienceSkyPanel";
 import { SpaceXLaunchPanel } from "@/components/SpaceXLaunchPanel";
@@ -98,6 +99,7 @@ export function DashboardSections({ initialWeatherReport }: DashboardSectionsPro
 
   return (
     <>
+      <DashboardSectionJumpShortcuts sectionOrder={sectionOrder} />
       <LcarsRailHeights />
       <LcarsRailNav
         order={sectionOrder}

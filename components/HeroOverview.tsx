@@ -121,6 +121,10 @@ export function HeroOverview() {
         <p className="hero-copy">
           {formatHeroIntroCopy(location.label, locationHydrated && hasStoredLocation)}
         </p>
+        <p className="sr-only" id="dash-section-shortcuts-hint">
+          Keyboard: Arrow keys cycle overview then LCARS sections in order (up or left for previous, down
+          or right for next). Alt+0 is overview; Alt+1–9 jump by section number. Sounds play on each jump.
+        </p>
         <div className="control-pills" aria-label="Auxiliary controls">
           {controlPills.map((pill) => (
             <a
