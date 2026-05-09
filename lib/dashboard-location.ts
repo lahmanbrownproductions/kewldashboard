@@ -61,8 +61,11 @@ export function parseDashboardLocation(raw: string | null): DashboardLocation | 
   }
 }
 
-export function formatLocationTagline(label: string) {
-  return `${label} command view for weather, navigation, markets, and headlines.`;
+export function formatHeroIntroCopy(placeLabel: string, hasChosenPlace: boolean): string {
+  if (!hasChosenPlace) {
+    return "Unified station board — meteorology overlays, plotted vectors, ticker telemetry, headline uplink. Claim an anchorage below to bind this deck to real space.";
+  }
+  return `${placeLabel}: localized telemetry lattice — synced atmosphere mantle, transit solutions, market bands, and priority bulletins.`;
 }
 
 /** Short zone label for UI (e.g. `America/Chicago` → `CT`). Uses `shortGeneric` when supported. */

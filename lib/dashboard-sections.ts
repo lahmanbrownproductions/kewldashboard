@@ -1,8 +1,8 @@
 export const DASHBOARD_SECTION_DEFS = [
-  { id: "systems", label: "Overview", className: "rail-segment rail-orange" },
+  { id: "systems", label: "Ops", className: "rail-segment rail-orange" },
   { id: "watchlist", label: "Systems", className: "rail-segment rail-gold" },
   { id: "bookmarks", label: "Links", className: "rail-segment rail-links" },
-  { id: "radar", label: "Radar", className: "rail-segment rail-peach" },
+  { id: "radar", label: "Science", className: "rail-segment rail-peach" },
   { id: "traffic", label: "Navigation", className: "rail-segment rail-purple" },
   { id: "news", label: "News", className: "rail-segment rail-blue" },
 ] as const;

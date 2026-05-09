@@ -1,6 +1,24 @@
 "use client";
 
-import { DragEvent, FormEvent, useEffect, useMemo, useRef, useState } from "react";
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  arrayMove,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+import type { ButtonHTMLAttributes, CSSProperties, FormEvent } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { playErrorBeep, playSubmitBeep, playWatchlistRemoveBeep } from "@/lib/button-beep";
 import { dispatchSetMarketTelemetrySymbol } from "@/lib/market-telemetry-bridge";
@@ -24,36 +42,130 @@ type WatchlistResponse = {
 
 const DEFAULT_SYMBOLS = ["BTC-USD", "ETH-USD", "SPY", "NVDA", "AAPL", "MSFT"];
 const STORAGE_KEY = "kewldashboard.watchlist.v1";
-const DRAG_MIME = "application/x-kewldashboard-watchlist-index";
 const SYMBOL_PATTERN = /^[A-Z0-9][A-Z0-9:.\^_-]{1,31}$/;
 
 function normalizeSymbol(value: string) {
   return value.trim().toUpperCase();
 }
 
+type WatchlistRowProps = {
+  symbol: string;
+  quote: Quote | undefined;
+  onRemove: () => void;
+  onOpenMarketTelemetry: () => void;
+  outerRef?: (node: HTMLElement | null) => void;
+  outerStyle?: CSSProperties;
+  isDragging?: boolean;
+  dragHandleProps?: ButtonHTMLAttributes<HTMLButtonElement>;
+  dragDisabled?: boolean;
+};
+
+function WatchlistRow({
+  symbol,
+  quote,
+  onRemove,
+  onOpenMarketTelemetry,
+  outerRef,
+  outerStyle,
+  isDragging = false,
+  dragHandleProps,
+  dragDisabled = false,
+}: WatchlistRowProps) {
+  const changePercent = quote?.changePercent ?? null;
+  const directionClass = changePercent === null ? "is-flat" : changePercent >= 0 ? "is-up" : "is-down";
+
+  return (
+    <article
+      ref={outerRef}
+      style={outerStyle}
+      className="watchlist-row"
+      role="listitem"
+      data-dragging={isDragging ? "true" : undefined}
+    >
+      <button
+        type="button"
+        className="watchlist-drag-handle"
+        aria-label={`Reorder ${symbol}`}
+        title="Drag to reorder"
+        disabled={dragDisabled}
+        {...dragHandleProps}
+      >
+        <span aria-hidden="true" className="watchlist-drag-glyph" />
+      </button>
+      <button
+        type="button"
+        className="watchlist-remove-btn"
+        aria-label={`Remove ${symbol}`}
+        onClick={(e) => {
+          e.stopPropagation();
+          onRemove();
+        }}
+      >
+        x
+      </button>
+      <button
+        type="button"
+        className="watchlist-row-main"
+        aria-label={`Open ${symbol} in Market Telemetry`}
+        onClick={onOpenMarketTelemetry}
+      >
+        <div className="watchlist-row-info">
+          <strong>{symbol}</strong>
+          <span>{quote?.name ?? "Waiting for quote"}</span>
+        </div>
+        <div className="watchlist-row-metrics">
+          <b>{formatQuotePrice(quote?.price ?? null, quote?.currency ?? "USD")}</b>
+          <em className={directionClass}>{formatQuotePercent(changePercent)}</em>
+        </div>
+      </button>
+    </article>
+  );
+}
+
+function SortableWatchlistRow(props: Omit<WatchlistRowProps, "outerRef" | "outerStyle" | "isDragging" | "dragHandleProps" | "dragDisabled">) {
+  const { symbol } = props;
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: symbol,
+  });
+
+  const outerStyle: CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.92 : undefined,
+    zIndex: isDragging ? 2 : undefined,
+  };
+
+  return (
+    <WatchlistRow
+      {...props}
+      outerRef={setNodeRef}
+      outerStyle={outerStyle}
+      isDragging={isDragging}
+      dragHandleProps={{ ...attributes, ...listeners }}
+      dragDisabled={false}
+    />
+  );
+}
+
 export function WatchlistPanel() {
+  const [dragReady, setDragReady] = useState(false);
   const [symbols, setSymbols] = useState(DEFAULT_SYMBOLS);
   const [input, setInput] = useState("");
   const [quotes, setQuotes] = useState<Quote[]>([]);
   const [updatedAt, setUpdatedAt] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
   const quoteFetchReadyRef = useRef(false);
-  const dragFromHandleRef = useRef(false);
 
   const symbolQuery = useMemo(() => symbols.join(","), [symbols]);
 
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
+
   useEffect(() => {
-    function clearDragHandleFlag() {
-      dragFromHandleRef.current = false;
-    }
-    window.addEventListener("pointerup", clearDragHandleFlag);
-    window.addEventListener("pointercancel", clearDragHandleFlag);
-    return () => {
-      window.removeEventListener("pointerup", clearDragHandleFlag);
-      window.removeEventListener("pointercancel", clearDragHandleFlag);
-    };
+    setDragReady(true);
   }, []);
 
   useEffect(() => {
@@ -151,62 +263,19 @@ export function WatchlistPanel() {
     setSymbols((currentSymbols) => currentSymbols.filter((currentSymbol) => currentSymbol !== symbol));
   }
 
-  function reorderSymbols(fromIndex: number, toIndex: number) {
-    if (fromIndex === toIndex || fromIndex < 0 || toIndex < 0) {
+  function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+    if (!over || active.id === over.id) {
       return;
     }
-    setSymbols((prev) => {
-      if (fromIndex >= prev.length || toIndex >= prev.length) {
-        return prev;
+    setSymbols((items) => {
+      const oldIndex = items.indexOf(String(active.id));
+      const newIndex = items.indexOf(String(over.id));
+      if (oldIndex === -1 || newIndex === -1) {
+        return items;
       }
-      const next = [...prev];
-      const [moved] = next.splice(fromIndex, 1);
-      next.splice(toIndex, 0, moved);
-      return next;
+      return arrayMove(items, oldIndex, newIndex);
     });
-  }
-
-  function parseDraggedIndex(dataTransfer: DataTransfer): number | null {
-    const raw = dataTransfer.getData(DRAG_MIME) || dataTransfer.getData("text/plain");
-    const index = Number.parseInt(raw, 10);
-    return Number.isFinite(index) ? index : null;
-  }
-
-  function onRowDragStart(event: DragEvent<HTMLElement>, index: number) {
-    if (!dragFromHandleRef.current) {
-      event.preventDefault();
-      return;
-    }
-    event.dataTransfer.effectAllowed = "move";
-    event.dataTransfer.setData(DRAG_MIME, String(index));
-    event.dataTransfer.setData("text/plain", String(index));
-  }
-
-  function onRowDragEnd() {
-    dragFromHandleRef.current = false;
-    setDragOverIndex(null);
-  }
-
-  function onRowDragOver(event: DragEvent<HTMLElement>, index: number) {
-    event.preventDefault();
-    event.dataTransfer.dropEffect = "move";
-    setDragOverIndex(index);
-  }
-
-  function onRowDragLeave(event: DragEvent<HTMLElement>) {
-    if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
-      setDragOverIndex(null);
-    }
-  }
-
-  function onRowDrop(event: DragEvent<HTMLElement>, dropIndex: number) {
-    event.preventDefault();
-    setDragOverIndex(null);
-    const fromIndex = parseDraggedIndex(event.dataTransfer);
-    if (fromIndex === null) {
-      return;
-    }
-    reorderSymbols(fromIndex, dropIndex);
   }
 
   function openInMarketTelemetry(symbol: string) {
@@ -240,65 +309,42 @@ export function WatchlistPanel() {
         </form>
       </div>
 
-      <div className="watchlist-grid" role="list">
-        {symbols.map((symbol, index) => {
-          const quote = quotes.find((item) => item.symbol === symbol);
-          const changePercent = quote?.changePercent ?? null;
-          const directionClass = changePercent === null ? "is-flat" : changePercent >= 0 ? "is-up" : "is-down";
-
-          return (
-            <article
-              className={`watchlist-row${dragOverIndex === index ? " is-watchlist-drop-target" : ""}`}
-              key={symbol}
-              role="listitem"
-              draggable
-              onDragStart={(event) => onRowDragStart(event, index)}
-              onDragEnd={onRowDragEnd}
-              onDragOver={(event) => onRowDragOver(event, index)}
-              onDragLeave={onRowDragLeave}
-              onDrop={(event) => onRowDrop(event, index)}
-            >
-              <button
-                type="button"
-                className="watchlist-drag-handle"
-                aria-label={`Reorder ${symbol}`}
-                title="Drag to reorder"
-                onPointerDown={() => {
-                  dragFromHandleRef.current = true;
-                }}
-              >
-                <span aria-hidden="true" className="watchlist-drag-glyph" />
-              </button>
-              <button
-                type="button"
-                className="watchlist-remove-btn"
-                aria-label={`Remove ${symbol}`}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  removeSymbol(symbol);
-                }}
-              >
-                x
-              </button>
-              <button
-                type="button"
-                className="watchlist-row-main"
-                aria-label={`Open ${symbol} in Market Telemetry`}
-                onClick={() => openInMarketTelemetry(symbol)}
-              >
-                <div className="watchlist-row-info">
-                  <strong>{symbol}</strong>
-                  <span>{quote?.name ?? "Waiting for quote"}</span>
-                </div>
-                <div className="watchlist-row-metrics">
-                  <b>{formatQuotePrice(quote?.price ?? null, quote?.currency ?? "USD")}</b>
-                  <em className={directionClass}>{formatQuotePercent(changePercent)}</em>
-                </div>
-              </button>
-            </article>
-          );
-        })}
-      </div>
+      {dragReady ? (
+        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+          <SortableContext items={symbols} strategy={verticalListSortingStrategy}>
+            <div className="watchlist-grid" role="list">
+              {symbols.map((symbol) => {
+                const quote = quotes.find((item) => item.symbol === symbol);
+                return (
+                  <SortableWatchlistRow
+                    key={symbol}
+                    symbol={symbol}
+                    quote={quote}
+                    onRemove={() => removeSymbol(symbol)}
+                    onOpenMarketTelemetry={() => openInMarketTelemetry(symbol)}
+                  />
+                );
+              })}
+            </div>
+          </SortableContext>
+        </DndContext>
+      ) : (
+        <div className="watchlist-grid" role="list">
+          {symbols.map((symbol) => {
+            const quote = quotes.find((item) => item.symbol === symbol);
+            return (
+              <WatchlistRow
+                key={symbol}
+                symbol={symbol}
+                quote={quote}
+                onRemove={() => removeSymbol(symbol)}
+                onOpenMarketTelemetry={() => openInMarketTelemetry(symbol)}
+                dragDisabled
+              />
+            );
+          })}
+        </div>
+      )}
 
       <p className="watchlist-note">
         {error

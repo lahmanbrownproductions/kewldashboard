@@ -1,21 +1,26 @@
 "use client";
 
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 
 import { DashboardThemeToggle } from "@/components/DashboardThemeToggle";
 import { EditableDashboardTitle } from "@/components/EditableDashboardTitle";
 import { useDashboardLocation } from "@/components/dashboard-location-context";
 import { playErrorBeep } from "@/lib/button-beep";
 import {
-  formatLocationTagline,
+  formatHeroIntroCopy,
   IANA_TIMEZONE_PATTERN,
   type DashboardLocation,
 } from "@/lib/dashboard-location";
-import { scrollToDashboardTarget, type ControlPill } from "@/lib/dashboard-pills";
-
-type HeroOverviewProps = {
-  controlPills: ControlPill[];
-};
+import {
+  controlPillsForSectionOrder,
+  scrollToDashboardTarget,
+} from "@/lib/dashboard-pills";
+import {
+  DASHBOARD_SECTION_ORDER_STORAGE_KEY,
+  DEFAULT_DASHBOARD_SECTION_ORDER,
+  restoreDashboardSectionOrder,
+  type DashboardSectionId,
+} from "@/lib/dashboard-sections";
 
 type GeocodeResponse = {
   error?: string;
@@ -25,15 +30,42 @@ type GeocodeResponse = {
   timezone?: string | null;
 };
 
-export function HeroOverview({ controlPills }: HeroOverviewProps) {
-  const { location, setLocation } = useDashboardLocation();
-  const [label, setLabel] = useState(location.label);
+export function HeroOverview() {
+  const { location, setLocation, hasStoredLocation, locationHydrated } = useDashboardLocation();
+  const [label, setLabel] = useState("");
   const [geocodeError, setGeocodeError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [sectionOrder, setSectionOrder] = useState<DashboardSectionId[]>(() => [
+    ...DEFAULT_DASHBOARD_SECTION_ORDER,
+  ]);
 
   useEffect(() => {
-    setLabel(location.label);
-  }, [location]);
+    const oldRailOrder = window.localStorage.getItem("kewldashboard.railOrder.v1");
+    const savedOrder = window.localStorage.getItem(DASHBOARD_SECTION_ORDER_STORAGE_KEY) ?? oldRailOrder;
+    setSectionOrder(restoreDashboardSectionOrder(savedOrder));
+  }, []);
+
+  useEffect(() => {
+    function onRailOrderChange() {
+      const saved = window.localStorage.getItem(DASHBOARD_SECTION_ORDER_STORAGE_KEY);
+      setSectionOrder(restoreDashboardSectionOrder(saved));
+    }
+    window.addEventListener("kewldashboard:rail-order-change", onRailOrderChange);
+    return () => window.removeEventListener("kewldashboard:rail-order-change", onRailOrderChange);
+  }, []);
+
+  const controlPills = useMemo(() => controlPillsForSectionOrder(sectionOrder), [sectionOrder]);
+
+  useEffect(() => {
+    if (!locationHydrated) {
+      return;
+    }
+    if (hasStoredLocation) {
+      setLabel(location.label);
+    } else {
+      setLabel("");
+    }
+  }, [locationHydrated, hasStoredLocation, location.label]);
 
   async function saveLocation(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -86,11 +118,13 @@ export function HeroOverview({ controlPills }: HeroOverviewProps) {
       <div className="hero-intro">
         <p className="eyebrow">lahmanbrownproductions</p>
         <EditableDashboardTitle />
-        <p className="hero-copy">{formatLocationTagline(location.label)}</p>
+        <p className="hero-copy">
+          {formatHeroIntroCopy(location.label, locationHydrated && hasStoredLocation)}
+        </p>
         <div className="control-pills" aria-label="Auxiliary controls">
-          {controlPills.map((pill, index) => (
+          {controlPills.map((pill) => (
             <a
-              key={`${pill.targetId}-${pill.label}-${index}`}
+              key={pill.targetId}
               className={`control-pill control-pill--${pill.accent}`}
               href={`#${pill.targetId}`}
               onClick={(event) => {
@@ -130,7 +164,7 @@ export function HeroOverview({ controlPills }: HeroOverviewProps) {
         <div className="status-bank-stats">
           <div>
             <span>Location</span>
-            <strong>{location.label}</strong>
+            <strong>{locationHydrated && hasStoredLocation ? location.label : "Awaiting helm fix"}</strong>
           </div>
           <div>
             <span>Sources</span>

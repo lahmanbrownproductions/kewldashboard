@@ -1,4 +1,9 @@
-/** Aligns with panel border accents & rail segments (#systems overview orange, radar peach, etc.). */
+import {
+  DEFAULT_DASHBOARD_SECTION_ORDER,
+  type DashboardSectionId,
+} from "@/lib/dashboard-sections";
+
+/** Aligns with panel border accents & rail segments (#systems / Ops orange, radar peach, etc.). */
 export type PillAccent = "gold" | "blue" | "peach" | "purple" | "orange";
 
 export type ControlPill = {
@@ -8,17 +13,35 @@ export type ControlPill = {
   accent: PillAccent;
 };
 
-/** One pill per dashboard panel; labels match panel headings (see components). */
-export const CONTROL_PILLS: ControlPill[] = [
+const SYSTEMS_PILLS: ControlPill[] = [
   { label: "Station Time", targetId: "clock", accent: "orange" },
   { label: "Atmospheric Scan", targetId: "weather", accent: "orange" },
   { label: "Market Telemetry", targetId: "markets", accent: "orange" },
-  { label: "Market Core", targetId: "watchlist", accent: "gold" },
-  { label: "Quick Links", targetId: "bookmarks", accent: "gold" },
-  { label: "Weather Radar", targetId: "radar", accent: "peach" },
-  { label: "Navigation", targetId: "traffic", accent: "purple" },
-  { label: "Subspace Feed", targetId: "news", accent: "blue" },
 ];
+
+const PILLS_BY_SECTION: Record<DashboardSectionId, ControlPill[]> = {
+  systems: SYSTEMS_PILLS,
+  watchlist: [{ label: "Market Core", targetId: "watchlist", accent: "gold" }],
+  bookmarks: [{ label: "Quick Links", targetId: "bookmarks", accent: "gold" }],
+  radar: [{ label: "Weather Radar", targetId: "radar", accent: "peach" }],
+  traffic: [{ label: "Navigation", targetId: "traffic", accent: "purple" }],
+  news: [{ label: "Subspace Feed", targetId: "news", accent: "blue" }],
+};
+
+/** Pills in header follow the same section order as the LCARS sidebar (multi-panel sections expand inline). */
+export function controlPillsForSectionOrder(order: DashboardSectionId[]): ControlPill[] {
+  const result: ControlPill[] = [];
+  for (const id of order) {
+    const pills = PILLS_BY_SECTION[id];
+    if (pills) {
+      result.push(...pills);
+    }
+  }
+  return result;
+}
+
+/** Default-order list; use {@link controlPillsForSectionOrder} when sidebar order is known. */
+export const CONTROL_PILLS = controlPillsForSectionOrder([...DEFAULT_DASHBOARD_SECTION_ORDER]);
 
 const FLASH_CLASS = "panel-focus-flash";
 const FLASH_FALLBACK_MS = 1200;

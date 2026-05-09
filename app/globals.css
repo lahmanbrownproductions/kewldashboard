@@ -5,7 +5,7 @@
   --panel-strong: #101010;
   --text: #f9d28a;
   --muted: #9fb9dd;
-  --orange: #c97e5f; /* Overview chrome: rails, hero & #systems borders, pills; primary readouts use --gold */
+  --orange: #c97e5f; /* Ops chrome: rails, hero & #systems borders, pills; primary readouts use --gold */
   --peach: #f2a13a;
   --gold: #f5c96b;
   --purple: #b77aa0;
@@ -568,9 +568,22 @@ h1 {
   min-width: 0;
 }
 
+.dashboard-title-field {
+  display: flex;
+  flex-flow: row nowrap;
+  align-items: center;
+  gap: 0.35rem 0.55rem;
+  width: 100%;
+  min-width: 0;
+  margin: 0;
+  cursor: text;
+}
+
 .dashboard-title-input {
   display: block;
-  width: 100%;
+  flex: 1 1 auto;
+  min-width: 0;
+  width: auto;
   max-width: 100%;
   margin: 0;
   padding: 0;
@@ -587,6 +600,39 @@ h1 {
   outline: 2px solid var(--gold);
   outline-offset: 0.12rem;
   border-radius: 0.08rem;
+}
+
+.dashboard-title-edit-badge {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+  padding: 0.2rem;
+  border: 1px solid rgba(141, 172, 214, 0.45);
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.28);
+  color: var(--blue);
+  opacity: 0.88;
+  transition:
+    opacity 140ms ease,
+    border-color 140ms ease,
+    background 140ms ease;
+  user-select: none;
+}
+
+.dashboard-title-field:hover .dashboard-title-edit-badge,
+.dashboard-title-field:focus-within .dashboard-title-edit-badge {
+  opacity: 1;
+  border-color: rgba(141, 172, 214, 0.78);
+  background: rgba(0, 0, 0, 0.4);
+}
+
+.dashboard-title-edit-icon {
+  display: block;
+  width: 0.72rem;
+  height: 0.72rem;
+  flex-shrink: 0;
 }
 
 .dashboard-title-input::placeholder {
@@ -1318,9 +1364,15 @@ h1 {
   box-shadow: var(--lcars-row-hover-inset);
 }
 
-.watchlist-row.is-watchlist-drop-target {
+.watchlist-row .watchlist-drag-handle:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.watchlist-row[data-dragging="true"] {
   outline: 2px dashed var(--gold);
   outline-offset: 3px;
+  box-shadow: 0 0.25rem 1rem rgba(0, 0, 0, 0.35);
 }
 
 .watchlist-drag-handle {

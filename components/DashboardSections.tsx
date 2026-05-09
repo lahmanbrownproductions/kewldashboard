@@ -60,7 +60,7 @@ export function DashboardSections({ initialWeatherReport }: DashboardSectionsPro
     switch (sectionId) {
       case "systems":
         return (
-          <section key={sectionId} id="systems" className="top-grid scroll-target" aria-label="Primary systems">
+          <section key={sectionId} id="systems" className="top-grid scroll-target" aria-label="Operations">
             <ClockPanel />
             <WeatherPanel initialReport={initialWeatherReport} />
             <MarketPanel />

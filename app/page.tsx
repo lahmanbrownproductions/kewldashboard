@@ -1,7 +1,6 @@
 import { APP_MASTHEAD_LABEL } from "@/lib/app-meta";
 import { HeroOverview } from "@/components/HeroOverview";
 import { DashboardSections } from "@/components/DashboardSections";
-import { CONTROL_PILLS } from "@/lib/dashboard-pills";
 import { DEFAULT_DASHBOARD_LOCATION } from "@/lib/dashboard-location";
 import { getWeatherReport } from "@/lib/weather";
 
@@ -17,7 +16,7 @@ export default async function Home() {
   return (
     <main className="dashboard-shell">
       <header id="overview" className="hero panel scroll-target">
-        <HeroOverview controlPills={CONTROL_PILLS} />
+        <HeroOverview />
       </header>
 
       <div className="dashboard-stage">
